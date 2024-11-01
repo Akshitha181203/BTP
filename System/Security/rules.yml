@@ -1,8 +1,8 @@
-title: Unauthorized Privilege Escalation and Buffer Overflow Detection
-id: 3
+title: Unauthorized Privilege Escalation Detection via Buffer Overflow
+id: 2
 description: |
-  Detect attempts to escalate privileges or load unauthorized modules, potentially using buffer overflow vulnerabilities, across any OS.
-  This rule monitors for abnormal privilege escalation, kernel/module loads, and system crash events.
+  Detect unauthorized attempts to escalate privileges potentially using buffer overflow vulnerabilities.
+  Monitor for suspicious kernel module loads and abnormal privilege escalation attempts following system crashes.
 stage: Exploitation
 technique: Buffer Overflow
 tags:
@@ -16,16 +16,21 @@ detection:
     event_type: "SYSTEM ALERT"
     message: "Unauthorized Privilege Escalation Attempt Detected"
     process:
-      - "*privilege*" # Match any process with privilege-related naming
+      - "su"
+      - "sudo"
+      - "setuid"
+      - "runas"         # Windows-specific
+      - "elevate"       # macOS-specific
     condition:
-      privilege_level: "*high*"  # High-level privilege on any OS
+      privilege_level: "root"       # Linux/macOS
+      admin_level: "administrator"  # Windows
       success: false
       time_window: 5 # in seconds
   selection_kernel_module_load:
     event_type: "SYSTEM ALERT"
-    message: "Unauthorized Kernel or Module Load Detected"
-    module_action:
-      - "load"
+    message: "Unauthorized Kernel Module Loaded"
+    kernel_module:
+      - "any" # Specific modules can be listed if known
     condition:
       abnormality: "high"
       success: true
@@ -33,12 +38,72 @@ detection:
   selection_crash_event:
     event_type: "SYSTEM EVENT"
     message: "System Crash or Abnormal Event Detected"
+    event_code:
+      - "CRASH" # Linux/macOS
+      - "1001"  # Windows Event ID for system crash
     condition:
-      event_impact: "critical" # Generic severity level indicator for crashes
       time_window: 60 # in seconds
   condition: selection_privilege_escalation or selection_kernel_module_load or selection_crash_event
 falsepositives:
-  - Authorized or scheduled kernel/module updates
-  - Testing or controlled privilege escalation activities
-  - Routine maintenance requiring elevated privileges
+  - Authorized kernel module updates
+  - Testing activities in controlled environments
+  - Routine system updates requiring temporary elevation
 level: high
+
+
+title: Unauthorized Privilege Escalation and Suspicious Kernel Module Activity
+id: 2
+description: |
+  Detects unauthorized attempts to gain root or administrative privileges, suspicious loading of kernel modules, 
+  and abnormal use of privileged commands, which may indicate an exploit or privilege escalation attempt.
+stage: Exploitation
+techneque: Privilege Escalation
+tags:
+  - attack.privilege-escalation
+  - attack.kernel-exploit
+  - system.security
+logsource:
+  category: system
+  product: any
+detection:
+  selection_unauthorized_privilege_attempt:
+    event_type: "SYSTEM ALERT"
+    message: "Unauthorized Privilege Escalation Attempt"
+    process:
+      - "su"
+      - "sudo"
+      - "runas"
+    condition:
+      privilege_level: "*root*"  # Detects attempts to gain root privileges
+      success: false
+      time_window: 10 # in seconds
+  selection_suspicious_kernel_module:
+    event_type: "SYSTEM ALERT"
+    message: "Suspicious Kernel Module Loaded"
+    kernel_module_action: "load"
+    condition:
+      abnormality: "high"  # Flags unusual or unauthorized module loading
+      success: true
+      time_window: 10 # in seconds
+  selection_privileged_command_usage:
+    event_type: "SYSTEM ALERT"
+    message: "Abnormal Use of Privileged Commands"
+    command:
+      - "/bin/chmod"      # Potentially sensitive binaries
+      - "/bin/chown"
+      - "/bin/lsmod"
+      - "/sbin/insmod"
+      - "/sbin/rmmod"
+      - "/usr/bin/apt-get"  # Linux-specific package manager
+      - "/usr/sbin/service"
+      - "powershell"        # For Windows, if logs allow cross-platform detection
+    condition:
+      abnormal_usage: "true"  # Detects usage of sensitive binaries without proper authorization
+      time_window: 5 # in seconds
+  condition: selection_unauthorized_privilege_attempt or selection_suspicious_kernel_module or selection_privileged_command_usage
+falsepositives:
+  - Scheduled or authorized kernel/module updates
+  - Routine maintenance requiring elevated privileges
+  - Controlled system testing activities
+level: high
+
