@@ -1,8 +1,8 @@
-title: Unauthorized Privilege Escalation Detection via Buffer Overflow
-id: 1
+title: Unauthorized Privilege Escalation and Buffer Overflow Detection
+id: 3
 description: |
-  Detect unauthorized attempts to escalate privileges potentially using buffer overflow vulnerabilities.
-  Monitor for suspicious kernel module loads and abnormal privilege escalation attempts following system crashes.
+  Detect attempts to escalate privileges or load unauthorized modules, potentially using buffer overflow vulnerabilities, across any OS.
+  This rule monitors for abnormal privilege escalation, kernel/module loads, and system crash events.
 stage: Exploitation
 technique: Buffer Overflow
 tags:
@@ -10,37 +10,35 @@ tags:
   - attack.buffer-overflow
 logsource:
   category: system
-  product: linux
+  product: any
 detection:
   selection_privilege_escalation:
     event_type: "SYSTEM ALERT"
     message: "Unauthorized Privilege Escalation Attempt Detected"
     process:
-      - "su"
-      - "sudo"
-      - "setuid"
+      - "*privilege*" # Match any process with privilege-related naming
     condition:
-      privilege_level: "root"
+      privilege_level: "*high*"  # High-level privilege on any OS
       success: false
-      time_window: 5 
+      time_window: 5 # in seconds
   selection_kernel_module_load:
     event_type: "SYSTEM ALERT"
-    message: "Unauthorized Kernel Module Loaded"
-    kernel_module:
-      - "any"
+    message: "Unauthorized Kernel or Module Load Detected"
+    module_action:
+      - "load"
     condition:
       abnormality: "high"
       success: true
-      time_window: 10
+      time_window: 10 # in seconds
   selection_crash_event:
     event_type: "SYSTEM EVENT"
     message: "System Crash or Abnormal Event Detected"
-    event_code: "CRASH"
     condition:
-      time_window: 60
+      event_impact: "critical" # Generic severity level indicator for crashes
+      time_window: 60 # in seconds
   condition: selection_privilege_escalation or selection_kernel_module_load or selection_crash_event
 falsepositives:
-  - Authorized kernel module updates
-  - Testing activities in controlled environments
-  - Routine system updates requiring temporary elevation
+  - Authorized or scheduled kernel/module updates
+  - Testing or controlled privilege escalation activities
+  - Routine maintenance requiring elevated privileges
 level: high
