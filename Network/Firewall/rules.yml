@@ -5,6 +5,7 @@ description: |
   Detect unsuccessful connection attempts to ports that are not commonly used by the system. 
   Ensure timely alerts for anomalous traffic patterns that may indicate reconnaissance activities or Denial of Service (DoS) attacks.
 stage: Reconnaissanace
+technique: 
 tags:
   - attack.denial-of-service
   - network.security
@@ -47,6 +48,7 @@ level: medium
 title: Access to Blacklisted Domain
 id: 2
 stage: Initial Access
+technique:
 description: |
     Detects when an outbound HTTP request is made to a blacklisted domain, potentially indicating malicious activity.
 logsource:
@@ -70,6 +72,7 @@ level: high
 title: Unusual Outbound Traffic to Unknown Domain/IP
 id: 3
 stage: Initial Access
+technique:
 description: |
     Detects outbound traffic to previously unobserved or unknown domains/IPs.
 logsource:
@@ -94,6 +97,7 @@ level: medium
 title: Potential Phishing Link Click and Malicious Download
 id: 4
 stage: Initial Access
+technique:
 description: |
     Detects user interactions with phishing links that result in downloads from malicious domains.
 logsource:

@@ -1,0 +1,46 @@
+title: Unauthorized Privilege Escalation Detection via Buffer Overflow
+id: 1
+description: |
+  Detect unauthorized attempts to escalate privileges potentially using buffer overflow vulnerabilities.
+  Monitor for suspicious kernel module loads and abnormal privilege escalation attempts following system crashes.
+stage: Exploitation
+technique: Buffer Overflow
+tags:
+  - attack.privilege-escalation
+  - attack.buffer-overflow
+logsource:
+  category: system
+  product: linux
+detection:
+  selection_privilege_escalation:
+    event_type: "SYSTEM ALERT"
+    message: "Unauthorized Privilege Escalation Attempt Detected"
+    process:
+      - "su"
+      - "sudo"
+      - "setuid"
+    condition:
+      privilege_level: "root"
+      success: false
+      time_window: 5 
+  selection_kernel_module_load:
+    event_type: "SYSTEM ALERT"
+    message: "Unauthorized Kernel Module Loaded"
+    kernel_module:
+      - "any"
+    condition:
+      abnormality: "high"
+      success: true
+      time_window: 10
+  selection_crash_event:
+    event_type: "SYSTEM EVENT"
+    message: "System Crash or Abnormal Event Detected"
+    event_code: "CRASH"
+    condition:
+      time_window: 60
+  condition: selection_privilege_escalation or selection_kernel_module_load or selection_crash_event
+falsepositives:
+  - Authorized kernel module updates
+  - Testing activities in controlled environments
+  - Routine system updates requiring temporary elevation
+level: high
