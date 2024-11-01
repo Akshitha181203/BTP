@@ -5,7 +5,7 @@ description: |
   Detect unsuccessful connection attempts to ports that are not commonly used by the system. 
   Ensure timely alerts for anomalous traffic patterns that may indicate reconnaissance activities or Denial of Service (DoS) attacks.
 stage: Reconnaissanace
-technique: 
+technique: Port Scanning
 tags:
   - attack.denial-of-service
   - network.security
@@ -48,7 +48,7 @@ level: medium
 title: Access to Blacklisted Domain
 id: 2
 stage: Initial Access
-technique:
+technique: Spear phishing
 tags:
     - malicious-domain-access
     - initial-access
@@ -76,7 +76,7 @@ level: high
 title: Unusual Outbound Traffic to Unknown Domain/IP
 id: 3
 stage: Initial Access
-technique:
+technique: Spear phishing
     - New but benign external resources accessed by users
 tags:
     - unknown-domain
@@ -107,7 +107,7 @@ level: medium
 title: Potential Phishing Link Click and Malicious Download
 id: 4
 stage: Initial Access
-technique:
+technique: Spear phishing
 tags:
     - phishing
     - initial-access
@@ -133,3 +133,27 @@ level: critical
 
 
 
+title: Malicious Site Access Detection
+id: 5
+description: |
+  Detects attempts to access known malicious websites, which may indicate a compromised host or 
+  malicious activity within the network.
+stage: Initial Access
+technique: Drive by downloads 
+tags:
+  - attack.initial_access
+  - network.security
+logsource:
+  category: firewall
+  product: firewall
+detection:
+  selection_malicious_site:
+    event_type: "Firewall Alert"
+    message: "Attempted connection to malicious site"
+    src_ip: "any"
+    dst_ip: "known_malicious_sites"  #malicious-sites domain
+  condition: selection_malicious_site
+falsepositives:
+  - Legitimate network monitoring or testing tools accessing flagged sites
+  - Web crawling or automated scans with harmless intentions
+level: medium

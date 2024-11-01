@@ -1,0 +1,94 @@
+title: Port Scanning Detection
+id: 1
+description: |
+  Detects patterns indicative of port scanning, such as multiple connection attempts to a range of ports
+  or specific signatures associated with known port scanning tools like nmap and masscan.
+stage: Reconnaissance
+technique: Port Scanning # Network Service Scanning
+tags:
+  - attack.reconnaissance
+  - network.security
+logsource:
+  category: ids/ips
+detection:
+  selection_sequential_ports:
+    event_type: "IDS ALERT"
+    message: "Port scan detected"
+    condition:
+      count: 10  # Define threshold for detection
+      time_window: 60 # in seconds
+  selection_nmap_signature:
+    event_type: "IDS ALERT"
+    message: "nmap scan pattern detected"
+    src_ip: "any"
+    dst_ports:
+      - 22
+      - 80
+      - 443
+  selection_masscan_signature:
+    event_type: "IPS ALERT"
+    message: "masscan tool usage detected"
+    src_ip: "any"
+    dst_ip: "any"
+  condition: selection_sequential_ports or selection_nmap_signature or selection_masscan_signature
+falsepositives:
+  - Legitimate network monitoring tools
+  - High connection attempts due to legitimate network scans
+level: medium
+
+
+title: Drive-By Download Attack Detection
+id: 2
+description: |
+  Detects patterns indicative of drive-by download attacks, such as access to known malicious URLs 
+  or file downloads commonly associated with drive-by downloads.
+stage: Exploitation
+technique: Drive by downloads # Drive-By Compromise
+tags:
+  - attack.initial_access
+  - malware.download
+logsource:
+  category: ids
+detection:
+  selection_driveby_signature:
+    event_type: "IDS ALERT"
+    message: "Signature match for Drive-By Download attack"
+    condition:
+      threshold: 1
+      time_window: 60 # in seconds
+  selection_malicious_url:
+    event_type: "IDS ALERT"
+    message: "Access to malicious site"
+    src_ip: "any"
+    dst_ip: "known_malicious_sites"
+  condition: selection_driveby_signature or selection_malicious_url
+falsepositives:
+  - Legitimate network activity on flagged sites (e.g., for threat research)
+  - False positive matches with non-malicious URLs
+level: high
+
+
+title: Exploit Kit Download Detection
+id: 3
+description: |
+  Detects downloads of files associated with exploit kits, which may indicate a successful compromise attempt.
+  Common exploit kits can deliver files with specific patterns or signatures.
+stage: Execution
+technique: Drive by downloads # Exploitation for Client Execution
+tags:
+  - attack.initial_access
+  - exploit.kit
+logsource:
+  category: ips
+detection:
+  selection_exploit_kit:
+    event_type: "IPS ALERT"
+    message: "Exploit kit detected"
+    file_type: ["swf", "js", "exe"]  # Known exploit kit file types
+    src_ip: "any"
+    dst_ip: "any"
+  condition: selection_exploit_kit
+falsepositives:
+  - Legitimate downloads of flagged file types from trusted sources
+  - High-volume download activity for testing or research
+level: high
