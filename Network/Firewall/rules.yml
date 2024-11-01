@@ -1,0 +1,116 @@
+title: SYN Flood and Port Scanning Detection
+id: 1
+description: |
+  Monitor for potential SYN flood attacks and high connection attempts to unusual ports. 
+  Detect unsuccessful connection attempts to ports that are not commonly used by the system. 
+  Ensure timely alerts for anomalous traffic patterns that may indicate reconnaissance activities or Denial of Service (DoS) attacks.
+stage: Reconnaissanace
+tags:
+  - attack.denial-of-service
+  - network.security
+logsource:
+  category: firewall
+detection:
+  selection_syn_flood:
+    event_type: "FIREWALL ALERT"
+    message: "Potential SYN Flood Detected"
+    src_ip:
+      - "any"
+    condition:
+      count: 100
+      time_window: 1 # in seconds
+  selection_high_connection_attempts:
+    event_type: "FIREWALL ALERT"
+    message: "High Connection Attempts to Common Ports"
+    dst_port:
+      - 22
+      - 80
+      - 443
+    condition:
+      count: 20
+      time_window: 60 # in seconds
+  selection_unsuccessful_attempts:
+    event_type: "FIREWALL ALERT"
+    message: "Unsuccessful Connection Attempts to Unusual Ports"
+    dst_port:
+      - "any"
+    condition:
+      count: 10
+      time_window: 60 # in seconds
+  condition: selection_syn_flood or selection_high_connection_attempts or selection_unsuccessful_attempts
+falsepositives:
+  - Legitimate heavy traffic during peak hours
+  - Misconfigured firewall rules
+level: medium
+
+
+title: Access to Blacklisted Domain
+id: 2
+stage: Initial Access
+description: |
+    Detects when an outbound HTTP request is made to a blacklisted domain, potentially indicating malicious activity.
+logsource:
+    category: proxy/firewall
+detection:
+    selection_blacklisted_domain:
+        event_type: 
+            - "PROXY ALERT"
+            - "FIREWALL ALERT"
+        message: "Access to Blacklisted Domain Detected"
+        src_ip: "any"
+        dst_domain: 
+            - "http://malicious-site.com"  # Replace with actual blacklisted domains
+    condition: selection_blacklisted_domain
+falsepositives:
+    - Legitimate but miscategorized accesses to blacklisted domains due to configuration issues
+level: high
+
+
+
+title: Unusual Outbound Traffic to Unknown Domain/IP
+id: 3
+stage: Initial Access
+description: |
+    Detects outbound traffic to previously unobserved or unknown domains/IPs.
+logsource:
+    category: proxy/firewall
+detection:
+    selection_unknown_traffic:
+        event_type: 
+            - "PROXY ALERT"
+            - "FIREWALL ALERT"
+        message: "Unusual Outbound Traffic to Unknown Domain/IP"
+        src_ip: "any"
+        dst_ip: "any"  # Detects any unusual outbound traffic
+    condition: selection_unknown_traffic
+    timeframe:
+        count: 1
+        window: 600  # Detects within a 10-minute window
+falsepositives:
+    - New but benign external resources accessed by users
+level: medium
+
+
+title: Potential Phishing Link Click and Malicious Download
+id: 4
+stage: Initial Access
+description: |
+    Detects user interactions with phishing links that result in downloads from malicious domains.
+logsource:
+    category: proxy/firewall
+detection:
+    selection_phishing_download:
+        event_type: 
+            - "PROXY ALERT"
+            - "FIREWALL ALERT"
+        message: "Potential Phishing Link Click and Malicious Download"
+        src_ip: "any"
+        dst_domain: 
+            - "http://unknown-site.xyz"  # We should replace with suspected malicious domains
+    condition: selection_phishing_download
+falsepositives:
+    - Users accidentally accessing phishing links without initiating a download
+level: critical
+
+
+
