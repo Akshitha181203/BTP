@@ -1,0 +1,47 @@
+title: Suspicious PowerShell Activity Related to Credential Dumping
+id: 5
+description: |
+  Detects suspicious PowerShell activity, such as encoded script execution, attempts to access lsass.exe memory, 
+  and misuse of Get-Credential cmdlet, which are often indicators of credential dumping or credential harvesting.
+stage: Credential Access
+technique: Credential Dumping
+tags:
+  - attack.credential-access
+  - attack.credential-dumping
+  - windows.security
+logsource:
+  category: powershell
+  product: windows
+detection:
+  selection_encoded_command:
+    event_type: "POWERSHELL ALERT"
+    message: "Suspicious Encoded PowerShell Command Execution"
+    command_line:
+      - "-EncodedCommand"  # Flag used for encoded PowerShell scripts
+    condition:
+      obfuscation_detected: true
+      time_window: 10 # in seconds
+  selection_lsass_access:
+    event_type: "POWERSHELL ALERT"
+    message: "PowerShell Access to lsass.exe Memory Detected"
+    command_line:
+      - "Invoke-Mimikatz"  # Specific command associated with credential dumping
+    process_accessed:
+      - "lsass.exe"  # Target process for credential dumping
+    condition:
+      process_target: "lsass.exe"
+      time_window: 10 # in seconds
+  selection_get_credential:
+    event_type: "POWERSHELL ALERT"
+    message: "Unusual Use of PowerShell Get-Credential Cmdlet"
+    command_line:
+      - "Get-Credential"
+    condition:
+      prompt_for_credentials: true  # Detects Get-Credential misuse
+      time_window: 5 # in seconds
+  condition: selection_encoded_command or selection_lsass_access or selection_get_credential
+falsepositives:
+  - Legitimate use of PowerShell for administrative tasks
+  - Authorized security testing involving credential dumps
+  - Legitimate credential requests in managed sessions
+level: high
