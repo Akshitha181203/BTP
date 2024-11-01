@@ -49,6 +49,10 @@ title: Access to Blacklisted Domain
 id: 2
 stage: Initial Access
 technique:
+tags:
+    - malicious-domain-access
+    - initial-access
+    - blacklist
 description: |
     Detects when an outbound HTTP request is made to a blacklisted domain, potentially indicating malicious activity.
 logsource:
@@ -73,6 +77,12 @@ title: Unusual Outbound Traffic to Unknown Domain/IP
 id: 3
 stage: Initial Access
 technique:
+    - New but benign external resources accessed by users
+tags:
+    - unknown-domain
+    - initial-access
+    - unusual-traffic
+    - outbound-connection
 description: |
     Detects outbound traffic to previously unobserved or unknown domains/IPs.
 logsource:
@@ -98,6 +108,11 @@ title: Potential Phishing Link Click and Malicious Download
 id: 4
 stage: Initial Access
 technique:
+tags:
+    - phishing
+    - initial-access
+    - malicious-download
+    - external-domain
 description: |
     Detects user interactions with phishing links that result in downloads from malicious domains.
 logsource:
