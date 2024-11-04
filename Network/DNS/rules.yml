@@ -1,0 +1,32 @@
+title: DNS-based Command and Control Detection
+id: 1
+description: |
+  Detects patterns in DNS logs that indicate potential C2 communication, such as high volumes of DNS requests 
+  to rare or unknown domains, or excessive DNS TXT record queries, which are often used by malware 
+  for data exfiltration or command retrieval.
+stage: Command and Control
+technique: C2 Servers
+tags:
+  - attack.command_and_control
+  - dns.security
+  - c2.communication
+logsource:
+  category: dns
+detection:
+  selection_rare_domains:
+    event_type: "DNS Query"
+    domain: "*"
+    condition:
+      count: 20 # Defining threshold for detecting rare domain queries
+      time_window: 60 # in seconds
+  selection_txt_record_queries:
+    event_type: "DNS Query"
+    record_type: "TXT"
+    condition:
+      count: 15 # Defining threshold for TXT record queries
+      time_window: 60 # in seconds
+  condition: selection_rare_domains or selection_txt_record_queries
+falsepositives:
+  - Legitimate DNS requests to new domains
+  - Automated systems that query DNS TXT records frequently
+level: high
