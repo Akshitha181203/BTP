@@ -261,3 +261,50 @@ falsepositives:
   - Legitimate administrative tasks requiring access to lsass.exe
   - Controlled testing environments for credential management
 level: high
+
+title: Unauthorized Screen Capturing Activity Detection
+id: 6
+description: |
+  Detects unauthorized screen capturing activities by monitoring endpoint security logs for alerts triggered by applications accessing display buffers or screen capture functionalities. This may indicate potential data collection attempts by malicious software.
+stage: Data Collection
+technique: Screen Capture
+tags:
+  - attack.data-collection
+  - attack.screen-capture
+  - endpoint.security
+logsource:
+  category: endpoint
+  product: any
+detection:
+  selection_screen_capture_access:
+    event_type: "ENDPOINT SECURITY ALERT"
+    message: "Application accessing display buffer or screen capture functionalities"
+    application_name:
+      - "CaptureTool"              
+      - "ScreenCapturePro"         
+      - "Snagit"                   
+      - "Greenshot"                
+      - "ShareX"                   
+      - "OBS Studio"               
+      - "Windows Snipping Tool"    
+      - "AnyDesk"                  
+      - "TeamViewer"               
+    condition:
+      # user: "{{ user_config.users }}"
+      unauthorized_access: true     # Flag for unauthorized access
+      time_window: 60                # Time window for monitoring (in seconds)
+  condition: selection_screen_capture_access
+falsepositives:
+  - Legitimate use of screen capture tools for approved tasks
+  - Authorized security testing involving screen capture
+  - Users capturing their screens for training or support purposes
+level: high
+
+# user_config:
+#   users:
+#     - "user1"
+#     - "user2"
+#     - "employee123"
+#   sensitive_files:
+#     - "/path/to/sensitive/file1.txt"
+#     - "/path/to/sensitive/file2.csv"
