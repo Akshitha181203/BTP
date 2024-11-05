@@ -1,0 +1,218 @@
+title: Malicious File Download and Suspicious Script Execution Detection
+id: 1
+description: |
+  This rule detects endpoint security events where users download files flagged as malware, execute abnormal scripts, 
+  or open potentially dangerous file types that are not commonly used. Such actions often result from phishing or malware attacks.
+stage: Initial Access
+technique: Phishing
+tags:
+  - attack.phishing
+  - attack.malware
+  - endpoint.security
+logsource:
+  category: endpoint-security
+  product: any
+detection:
+  selection_malicious_file_download:
+    event_type: "ENDPOINT ALERT"
+    message: "Malicious File Download Detected"
+    file_name:
+      - "*.exe"   # Detect executable files, can be customized based on file names
+      - "*.js"    # JavaScript files, often associated with scripts
+      - "*.bat"   # Batch files, commonly used for scripting
+    condition:
+      alert_type: "malware"
+      time_window: 10 # in seconds
+  selection_suspicious_script_execution:
+    event_type: "ENDPOINT ALERT"
+    message: "Suspicious Script Execution Detected"
+    script_type:
+      - "PowerShell"
+      - "macro"    # Includes macros in documents
+    related_file:
+      - "*.docm"   # Macro-enabled documents, commonly used in phishing attacks
+      - "*.xlsm"   # Excel macro-enabled documents
+    condition:
+      alert_type: "suspicious"
+      time_window: 10 # in seconds
+  selection_dangerous_file_type_opened:
+    event_type: "ENDPOINT ALERT"
+    message: "Potentially Dangerous File Type Opened"
+    file_type:
+      - "*.exe"
+      - "*.js"
+      - "*.bat"
+    condition:
+      uncommon_usage: true  # Flags if these file types are uncommon for typical user behavior
+      time_window: 5 # in seconds
+  condition: selection_malicious_file_download or selection_suspicious_script_execution or selection_dangerous_file_type_opened
+falsepositives:
+  - Authorized IT activities involving script execution
+  - Scheduled system or software updates that require .exe files
+  - Legitimate use of macros in controlled environments
+level: high
+
+title: Suspicious Keylogger Process and Log File Creation Detection
+id: 2
+description: |
+  Detects processes potentially performing keylogging activities by monitoring keyboard inputs 
+  and creating files that store captured keystrokes. This rule helps identify unauthorized 
+  credential access attempts through keylogging.
+stage: Credential Access
+technique: Keylogging
+tags:
+  - attack.credential-access
+  - attack.keylogging
+  - endpoint.security
+logsource:
+  category: endpoint-security
+  product: any
+detection:
+  selection_keylogger_process:
+    event_type: "ENDPOINT ALERT"  
+    message: "Suspicious Keylogger Process Detected"
+    process_name:
+      - "keylogger.exe"  # Common name for keylogging software
+      - "logger.exe"     # Generic naming patterns for logging programs
+      - "spyware.exe"    # Another possible name for malicious logging software
+    condition:
+      behavior: "input_monitoring"  # Detects processes monitoring keyboard inputs
+      suspicious_activity: true
+      time_window: 10 # in seconds
+  selection_log_file_creation:
+    event_type: "ENDPOINT ALERT"  
+    message: "Suspicious Keystroke Log File Created"
+    file_path:
+      - "C:\\Temp\\keys_log.txt"
+      - "/tmp/keys_log.txt"  # Path for Unix-like systems
+    associated_process:
+      - "malicious.exe"      # Process known or suspected to log keystrokes
+    condition:
+      unusual_file_creation: true
+      time_window: 10 # in seconds
+  condition: selection_keylogger_process or selection_log_file_creation
+falsepositives:
+  - Authorized IT applications with keylogging components for accessibility or debugging
+  - Legitimate administrative monitoring software
+level: high
+
+title: Keylogger Detection and Suspicious Device Access
+id: 3
+description: |
+  This rule detects alerts from anti-virus and endpoint detection and response (EDR) systems 
+  flagging known keylogger signatures and monitoring unusual access to keyboard input devices. 
+  It helps identify unauthorized credential access attempts through keylogging.
+stage: Credential Access
+technique: Keylogging
+tags:
+  - attack.credential-access
+  - attack.keylogging
+  - endpoint.security
+logsource:
+  category: 
+    - anti-virus
+    - endpoint-detection-response
+  product: any
+detection:
+  selection_keylogger_malware_detection:
+    event_type: "ANTI-VIRUS ALERT"  
+    message: "Keylogger Malware Detected"
+    content: "Detected and quarantined keylogger malware"  # Common alert message
+    condition:
+      alert_type: "malware"
+      time_window: 10 # in seconds
+  selection_suspicious_device_access:
+    event_type: "EDR ALERT"  
+    message: "Suspicious access to keyboard input devices"
+    content: "Unusual access to keyboard input devices"  # Common alert message
+    condition:
+      suspicious_activity: true
+      time_window: 10 # in seconds
+  condition: selection_keylogger_malware_detection or selection_suspicious_device_access
+falsepositives:
+  - Authorized IT applications with monitoring components for accessibility or debugging
+  - Legitimate software that may access keyboard devices under normal operation
+level: high
+
+title: Ransomware Detection and Unauthorized Encryption Attempt Monitoring
+id: 3
+description: |
+  This rule reviews anti-virus and Endpoint Detection and Response (EDR) logs for alerts related to recognized ransomware signatures, including but not limited to known variants, and any failed encryption attempts by untrusted applications. Prompt detection of these threats enables rapid response and containment.
+stage: Initial Access
+technique: Ransomware
+tags:
+  - attack.ransomware
+  - attack.encryption
+  - endpoint.security
+logsource:
+  category: antivirus
+  category: endpoint-detection-response
+  product: any
+detection:
+  selection_ransomware_signature:
+    event_type: "ANTIVIRUS ALERT"
+    message: "Ransomware Signature Detected"
+    signature_name:
+      - "LockBit"
+      - "Ryuk"
+      - "WannaCry"
+      - "Cerber"
+      - "CryptoLocker"
+      - "REvil"
+    condition:
+      alert_type: "ransomware"
+      time_window: 10 # in seconds
+  selection_failed_encryption_attempt:
+    event_type: "ENDPOINT ALERT"
+    message: "Unauthorized Encryption Attempt Blocked"
+    application_name: 
+      - "malicious_app.exe"  # Example of an untrusted application
+    condition:
+      unauthorized_encryption: true
+      time_window: 10 # in seconds
+  condition: selection_ransomware_signature or selection_failed_encryption_attempt
+falsepositives:
+  - Authorized encryption applications for legitimate business use
+  - Routine system maintenance tasks that may involve file encryption
+  - Legitimate software that may trigger false positives
+level: high
+
+# title: Dynamic Ransomware Detection with Threat Intelligence Feed
+# id: 4
+# description: |
+#   This rule leverages threat intelligence feeds to dynamically detect known ransomware signatures and monitor for unauthorized encryption attempts by untrusted applications. The rule automatically updates with new indicators from the TIF.
+# stage: Initial Access
+# technique: Ransomware
+# tags:
+#   - attack.ransomware
+#   - attack.encryption
+#   - threat-intelligence
+# logsource:
+#   category: antivirus
+#   category: endpoint-detection-response
+#   product: any
+# detection:
+#   selection_dynamic_ransomware_signature:
+#     event_type: "ANTIVIRUS ALERT"
+#     message: "Ransomware Signature Detected via TIF"
+#     signature_name: 
+#       # Assuming `tif` is a variable that pulls from a dynamic threat feed
+#       - "${tif.ransomware_signatures}"  # Placeholder for dynamic TIF values
+#     condition:
+#       alert_type: "ransomware"
+#       time_window: 10 # in seconds
+#   selection_failed_encryption_attempt:
+#     event_type: "ENDPOINT ALERT"
+#     message: "Unauthorized Encryption Attempt Blocked"
+#     application_name: 
+#       - "${tif.untrusted_applications}"  # Placeholder for dynamic TIF values
+#     condition:
+#       unauthorized_encryption: true
+#       time_window: 10 # in seconds
+#   condition: selection_dynamic_ransomware_signature or selection_failed_encryption_attempt
+# falsepositives:
+#   - Authorized encryption applications for legitimate business use
+#   - Routine system maintenance tasks that may involve file encryption
+#   - Legitimate software that may trigger false positives
+# level: high
+

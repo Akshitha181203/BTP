@@ -1,5 +1,5 @@
 title: Unauthorized Privilege Escalation Detection via Buffer Overflow
-id: 2
+id: 1
 description: |
   Detect unauthorized attempts to escalate privileges potentially using buffer overflow vulnerabilities.
   Monitor for suspicious kernel module loads and abnormal privilege escalation attempts following system crashes.
