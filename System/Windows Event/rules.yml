@@ -77,7 +77,7 @@ level: high
 
 
 title: Detection of Unusual Logon Attempts
-id: 12
+id: 3
 description: |
   Detects potential unauthorized access by monitoring Windows Event Logs for successful logon attempts 
   (Event ID 4624) made through RDP or SMB from non-standard IP addresses or unusual user accounts.
