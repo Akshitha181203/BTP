@@ -1,0 +1,114 @@
+title: Detection of Unusual Kerberos Authentication Patterns
+id: 1
+description: |
+  Detects potential suspicious activities by monitoring Windows Event Logs for unusual Kerberos authentication patterns,
+  including TGT requests from unexpected systems or users, and abnormal TGS requests targeting multiple systems.
+stage: Lateral Movement
+technique: Pass the Hash or Pass the Ticket
+tags:
+  - lateral.movement
+  - kerberos
+  - authentication.abuse
+  - anomaly.detection
+logsource:
+  category: windows_event
+detection:
+  unusual_tgt_requests:
+    event_id: 4768
+    message: "Unusual TGT request detected"
+    src_system: "Any unexpected system (e.g., 'Workstation-05')"
+    user: "Any user (e.g., 'admin')"
+    condition: 
+      description: "Monitor for TGT requests from systems or users that don’t typically interact with each other."
+  unusual_tgs_requests:
+    event_id: 4769
+    message: "Unusual TGS request detected"
+    src_system: "Any unexpected system (e.g., 'Workstation-05')"
+    user: "Any user (e.g., 'admin')"
+    service: "Any sensitive service (e.g., 'cifs/server1')"
+    condition: 
+      description: "Track abnormal TGS requests where attackers might be requesting service tickets to access multiple systems."
+falsepositives:
+  - Legitimate administrative actions where an admin uses unexpected systems for valid purposes.
+  - Scheduled tasks or automated scripts running from unusual systems.
+  - Users accessing services for legitimate reasons that may appear anomalous.
+level: high
+
+
+title: Detection of Unusual Interactions with Credential Processes
+id: 2
+description: |
+  Detects potential credential dumping or unauthorized access attempts by monitoring Windows Event Logs
+  for unusual interactions with lsass.exe or other processes handling sensitive credentials, such as attempts 
+  to read or modify their memory.
+stage: Lateral Movement
+technique: Credential Dumping
+tags:
+  - credential.dumping
+  - lsass
+  - anomaly.detection
+  - process.monitoring
+logsource:
+  category: windows_event
+  product: windows
+detection:
+  suspicious_lsass_access:
+    event_id: 4688  # event for new process creation
+    message: "Suspicious access to lsass.exe detected"
+    process_name: "mimikatz.exe"  # Example of a known credential dumping tool
+    target_process: "lsass.exe"
+    condition:
+      description: "Monitor for processes attempting to read or modify lsass.exe memory."
+  
+  abnormal_process_creation:
+    event_id: 4688  # event for new process creation
+    message: "Abnormal process creation detected"
+    process_name: "gsecdump.exe"  # Another known credential dumping tool
+    target_process: "lsass.exe"
+    condition:
+      description: "Track processes attempting to read memory of lsass.exe."
+
+falsepositives:
+  - Legitimate security tools performing authorized memory analysis.
+  - Administrative actions where scripts or tools interact with lsass.exe for valid purposes.
+  - Scheduled tasks or automated processes accessing lsass.exe for legitimate reasons.
+
+level: high
+
+
+title: Detection of Unusual Logon Attempts
+id: 12
+description: |
+  Detects potential unauthorized access by monitoring Windows Event Logs for successful logon attempts 
+  (Event ID 4624) made through RDP or SMB from non-standard IP addresses or unusual user accounts.
+stage: Lateral Movement
+technique: Remote Desktop Protocol (RDP) or SMB exploitation
+tags:
+  - lateral.movement
+  - unauthorized.access
+  - rdp
+  - smb
+  - anomaly.detection
+logsource:
+  category: windows_event
+  product: windows
+detection:
+  unusual_rdp_logon:
+    event_id: 4624
+    message: "Unusual RDP logon detected"
+    user: "Any user (e.g., 'admin')"
+    src_ip: "Any non-standard IP address (e.g., '203.0.113.1')"
+    condition:
+      description: "Monitor for RDP logons from IP addresses not typically associated with the user."
+  unusual_smb_logon:
+    event_id: 4624
+    message: "Unusual SMB logon detected"
+    user: "Any unusual user account (e.g., 'guest')"
+    src_ip: "Any non-standard IP address (e.g., '192.168.1.10')"
+    condition:
+      description: "Track SMB logons from user accounts that typically do not access systems via SMB."
+falsepositives:
+  - Authorized users logging in from remote locations.
+  - Service accounts or automated processes using unusual IP addresses.
+  - Users connecting from legitimate but non-standard networks (e.g., VPNs).
+level: high
