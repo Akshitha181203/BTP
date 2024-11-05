@@ -26,6 +26,9 @@ detection:
     message: "PowerShell Access to lsass.exe Memory Detected"
     command_line:
       - "Invoke-Mimikatz" # Specific command associated with credential dumping
+      - "Get-WMIObject"   # Alternative command that may be used for credential access
+      - "Dump-Process"     # Generic command to dump processes, possibly for credential harvesting
+      - "Read-ProcessMemory" # Method for reading process memory directly
     process_accessed:
       - "lsass.exe" # Target process for credential dumping
     condition:

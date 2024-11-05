@@ -1,0 +1,154 @@
+title: File Integrity Monitoring for Unauthorized Changes
+id: 1
+description: |
+  Detects unauthorized changes to files or directories, particularly in web upload directories 
+  and critical directories, which may indicate the placement of backdoors or other malicious files.
+stage: Installation or Persistance
+technique: Backdoors
+tags:
+  - attack.installation
+  - attack.persistence
+  - file-integrity
+logsource:
+  category: file-integrity
+  product: any
+detection:
+  selection_file_change_upload:
+    event_type: "FILE ALERT"
+    message: "Unauthorized File Change Detected in Web Upload Directory"
+    file_path:
+      - "/uploads/"  # Directory for uploaded files
+    file_extension:
+      - ".php"
+      - ".sh"
+      - ".bin"
+    condition:
+      action: "created"  # Can also check for modified or deleted
+      time_window: 10 # in seconds
+  selection_file_modification_critical:
+    event_type: "FILE ALERT"
+    message: "Unauthorized File Modification Detected in Critical Directory"
+    file_path:
+      - "/var/www/"    # Web server root
+      - "/home/user/"  # User home directory
+    condition:
+      action: "modified"  # Checking for unauthorized modifications
+      time_window: 10 # in seconds
+  selection_unusual_file_appearance:
+    event_type: "FILE ALERT"
+    message: "Suspicious File Change Detected in Sensitive Directory"
+    file_path:
+      - "/home/user/"
+    file_extension:
+      - ".php"
+      - ".exe"
+      - ".py"
+      - ".pl"
+    condition:
+      action: "created"  # Looking for new suspicious files
+      time_window: 10 # in seconds
+  condition: selection_file_change_upload or selection_file_modification_critical or selection_unusual_file_appearance
+falsepositives:
+  - Legitimate updates or changes to website files
+  - Authorized file uploads for legitimate applications
+  - Routine administrative changes in critical directories
+level: high
+
+title: File Integrity Monitoring for Webshell Indicators
+id: 2
+description: |
+  Detects unexpected changes to critical files, particularly in web directories, 
+  unauthorized file creations in sensitive directories, and deletion of log files, 
+  which may indicate the placement of webshells or malicious activity.
+stage: Web Shell Installation
+technique: Web Shells
+tags:
+  - attack.webshells
+  - attack.persistence
+  - file-integrity
+logsource:
+  category: file-integrity
+  product: any
+detection:
+  selection_file_modification_web_upload:
+    event_type: "FILE ALERT"
+    message: "Unauthorized Change Detected in Web Upload Directory"
+    file_path:
+      - "/uploads/"  # Monitoring web upload directory
+    condition:
+      action: 
+        - "modified"
+        - "created"  # Detecting unauthorized files in web directories
+      file_extension:
+        - ".php"  # Common webshell file extensions
+        - ".sh"
+        - ".bin"
+      time_window: 10 # in seconds
+  selection_sensitive_file_modification:
+    event_type: "FILE ALERT"
+    message: "Sensitive File Modification Detected"
+    file_path:
+      - "/var/www/"  # Monitoring web server root
+    condition:
+      action: "modified"  # Monitoring for modifications in web server files
+      time_window: 10 # in seconds
+  selection_log_file_deletion:
+    event_type: "FILE ALERT"
+    message: "Log File Deletion Attempt Detected"
+    file_path:
+      - "/var/log/"  # Monitoring log file directory
+    condition:
+      action: "deleted"  # Detecting deletions
+      time_window: 10 # in seconds
+  condition: selection_file_modification_web_upload or selection_sensitive_file_modification or selection_log_file_deletion
+falsepositives:
+  - Legitimate updates or changes to web files
+  - Authorized administrative actions on log files
+  - Routine maintenance activities affecting sensitive files
+level: high
+
+title: File Integrity Monitoring for Ransomware Indicators
+id: 3
+description: |
+  Monitors for significant changes in file integrity, such as unexpected mass encryption of files 
+  and modifications in file extensions, indicating potential ransomware activity.
+stage: Impact
+technique: Ransomware
+tags:
+  - attack.ransomware
+  - attack.data-encryption
+  - file-integrity
+logsource:
+  category: file-integrity
+  product: any
+detection:
+  selection_mass_encryption:
+    event_type: "FILE INTEGRITY ALERT"
+    message: "Mass Encryption Detected"
+    condition:
+      threshold:
+        type: both
+        track: by_dir
+        count: 50  # Threshold for the number of files encrypted
+        seconds: 60  # Time window in seconds
+  selection_file_extension_change:
+    event_type: "FILE INTEGRITY ALERT"
+    message: "Suspicious File Extension Change Detected"
+    file_extension:
+    - ".encrypted"
+    - ".lock"
+    - ".locked"
+    - ".crypto"
+    - ".vault"
+    - ".enc"
+    - ".aes"
+    - ".rar"
+    - ".zzz"  
+    condition:
+      action: "changed"  # Monitoring for changes in file extensions
+  condition: selection_mass_encryption or selection_file_extension_change
+falsepositives:
+  - Legitimate bulk file updates or encryption activities
+  - Authorized backup processes modifying file extensions
+  - System or software updates affecting file integrity
+level: high

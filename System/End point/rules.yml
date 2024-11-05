@@ -50,7 +50,7 @@ falsepositives:
   - Authorized IT activities involving script execution
   - Scheduled system or software updates that require .exe files
   - Legitimate use of macros in controlled environments
-level: high
+level: medium
 
 title: Suspicious Keylogger Process and Log File Creation Detection
 id: 2
@@ -135,7 +135,7 @@ falsepositives:
 level: high
 
 title: Ransomware Detection and Unauthorized Encryption Attempt Monitoring
-id: 3
+id: 4
 description: |
   This rule reviews anti-virus and Endpoint Detection and Response (EDR) logs for alerts related to recognized ransomware signatures, including but not limited to known variants, and any failed encryption attempts by untrusted applications. Prompt detection of these threats enables rapid response and containment.
 stage: Initial Access
@@ -216,3 +216,48 @@ level: high
 #   - Legitimate software that may trigger false positives
 # level: high
 
+title: Unauthorized Memory Access and Credential Dumping Detection
+id: 5
+description: |
+  Detects unauthorized attempts to access sensitive processes such as lsass.exe, which is often targeted for credential dumping.
+  The rule also identifies unusual memory dump activity from multiple known tools that are used to extract credentials from memory.
+stage: Credential Access
+technique: Credential Dumping
+tags:
+  - attack.credential-access
+  - attack.credential-dumping
+  - endpoint.security
+logsource:
+  category: endpoint-detection-response
+  product: any
+detection:
+  selection_memory_access:
+    event_type: "EDR ALERT"
+    message: "Unauthorized Memory Access Attempt on lsass.exe"
+    process_name: "*.*"  # Matches any process name
+    # process_name: "unknown_tool.exe"  # Placeholder for any tool that accesses lsass.exe
+    condition:
+      target_process: "lsass.exe"  # Monitoring for unauthorized access attempts
+      access_type: "memory"  # Indicates that memory access is being attempted
+      success: false
+      suspicious_activity: true
+  selection_memory_dump_activity:
+    event_type: "EDR ALERT"
+    message: "Unusual Memory Dump Activity Detected"
+    tools:
+      - "Mimikatz"
+      - "ProcDump"
+      - "Windows Credential Editor"
+      - "RogueKiller"
+      - "Koadic"
+      - "PowerSploit"
+      - "gsecdump"
+    condition:
+      suspicious_tool: true  # Flags if any of the listed tools are detected
+      action: "dump"  # Indicates a memory dump action
+  condition: selection_memory_access or selection_memory_dump_activity
+falsepositives:
+  - Authorized security tools performing memory analysis
+  - Legitimate administrative tasks requiring access to lsass.exe
+  - Controlled testing environments for credential management
+level: high

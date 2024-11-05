@@ -1,0 +1,81 @@
+# title: Dynamic Sensitive File Access Detection
+# id: 1
+# description: |
+#   Detects suspicious access to sensitive files by monitoring access patterns of specified users and built-in sensitive directories. 
+#   The rule allows for user-defined sensitive users and folders through a configuration file.
+# stage: Data Collection
+# technique: File Collection
+# tags:
+#   - attack.data-collection
+#   - attack.file-collection
+#   - system.security
+# logsource:
+#   category: file_access
+#   product: any
+# detection:
+#   selection_suspicious_access:
+#     event_type: "FILE ACCESS ALERT"
+#     user: "{{ user_config.users }}"  # Load user-defined sensitive users from configuration
+#     file_accessed: "{{ user_config.sensitive_files }}"  # Load user-defined sensitive files from configuration
+#     condition:
+#       time_window: 60 # in seconds
+#       abnormal_access_pattern: true  # Detects unusual access patterns
+#   selection_builtin_sensitive_folders:
+#     event_type: "FILE ACCESS ALERT"
+#     file_accessed:
+#       - "/etc/sensitive_directory"  # Built-in sensitive directory
+#       - "/var/www/html"  # Another built-in sensitive directory
+#     condition:
+#       time_window: 60 # in seconds
+#       abnormal_access_pattern: true
+#   condition: selection_suspicious_access or selection_builtin_sensitive_folders
+# falsepositives:
+#   - Routine administrative access
+#   - Authorized access by security personnel
+# level: high
+
+# users:
+#   - "user1"
+#   - "user2"
+#   - "employee123"
+# sensitive_files:
+#   - "/path/to/sensitive/file1.txt"
+#   - "/path/to/sensitive/file2.csv"
+
+title: Large-Scale File Deletion and Overwrite Detection
+id: 1
+description: |
+  Monitors for large-scale file deletions and overwrites, which may indicate data destruction activities. 
+  The rule triggers alerts based on defined thresholds for file operations in a specified time window.
+stage: Impact
+technique: Data Destruction
+tags:
+  - attack.data-destruction
+  - attack.file-collection
+  - system.security
+logsource:
+  category: file_access
+  product: any
+detection:
+  selection_mass_deletion:
+    event_type: "FILE ACCESS ALERT"
+    action: "delete"  # Specifies the action type being monitored
+    threshold: 
+      type: both
+      track: by_dir
+      count: 1000  # Threshold for deletions
+      seconds: 60  # Time window for the detection
+  selection_significant_overwrite:
+    event_type: "FILE ACCESS ALERT"
+    action: "overwrite"  # Specifies the action type being monitored
+    threshold: 
+      type: both
+      track: by_file
+      count: 100  # Threshold for overwrites
+      seconds: 60  # Time window for the detection
+  condition: selection_mass_deletion or selection_significant_overwrite
+falsepositives:
+  - Routine system maintenance
+  - Scheduled backup processes
+  - User-initiated file cleanups
+level: high
