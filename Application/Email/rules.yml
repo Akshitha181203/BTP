@@ -1,0 +1,40 @@
+title: Detection of Suspicious or Phishing Emails
+id: 1
+description: |
+  Detects suspicious email activity, such as incoming emails with unusual attachments (e.g., .exe, .js, .docm) or links to known malicious domains, as well as attempts at phishing through domain spoofing or fake email addresses.
+stage: Initial Access
+technique: Spear Phishing
+tags:
+  - initial.access
+  - phishing
+  - email.security
+  - anomaly.detection
+logsource:
+  category: email_logs
+detection:
+  suspicious_attachments:
+    message: "Suspicious attachment detected in incoming email"
+    condition:
+      description: "Monitor for incoming emails with attachments of unusual or potentially dangerous file types (e.g., .exe, .js, .docm)."
+      attachments:
+        - ".exe"
+        - ".js"
+        - ".docm"
+  suspicious_urls:
+    message: "Suspicious URL detected in email"
+    condition:
+      description: "Monitor for incoming emails containing URLs linked to suspicious or known malicious domains."
+      urls:
+        - "http://malicious-url.com" #mentioning malicious url link
+  phishing_attempt:
+    message: "Phishing attempt detected due to domain spoofing"
+    condition:
+      description: "Monitor for emails from addresses with slight modifications to trusted domains (e.g., google.com vs g00gle.com)."
+      spoofed_domains:
+        - "trustedname.co" # we need to mention  a spoofed domain
+        - "trustedname.com"
+falsepositives:
+  - Legitimate marketing or mass email campaigns that might include attachments or external links.
+  - Internal emails with legitimate attachments that might be flagged as suspicious by automated rules.
+  - Spoofed emails that are part of a legitimate business process.
+level: high
