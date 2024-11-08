@@ -2,6 +2,7 @@ import threading
 import re
 import json
 import os
+import yaml
 
 # Define directories for logs and rules
 RAW_LOG_DIR = './raw_logs'
@@ -35,9 +36,9 @@ def parse_logs(log_type):
 def load_rules(rule_dir):
     rules = []
     for file in os.listdir(rule_dir):
-        if file.endswith(".json"):
+        if file.endswith(".yml"):
             with open(os.path.join(rule_dir, file), 'r') as f:
-                rules.append(json.load(f))
+                rules.append(yaml.safe_load(f))
     return rules
 
 # Function to apply rules on parsed logs
@@ -45,7 +46,7 @@ def apply_rules(logs, rules, log_type):
     attacked_logs = []
 
     # Write rules according to the type of rule
-    
+
     if re.search(rule["condition"], log["message"]):
         log["Alert"] = rule["alert_message"]
         log["Stage"] = rule.get("stage", "Unknown")
