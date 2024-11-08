@@ -16,6 +16,20 @@ OUTPUT_DIR = './output'
 
 # Function to parse raw logs into a structured format
 def parse_logs_with_logparser(line, log_type):
+    # Define file extensions based on log type
+    if log_type == "system":
+        file_extension = ".log"
+    elif log_type == "application":
+        file_extension = ".txt"
+    elif log_type == "network":
+        file_extension = ".pcap"
+    else:
+        raise ValueError(f"Unknown log type: {log_type}")
+
+    # Define paths for raw and parsed logs
+    raw_log_file_path = os.path.join(RAW_LOG_DIR, f"{log_type}_raw_logs{file_extension}")
+    parsed_log_file_path = os.path.join(PARSED_LOG_DIR, f"{log_type}_logs.json")
+
     # Parse the logs using log parser or create one
     return None
 
