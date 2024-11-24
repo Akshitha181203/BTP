@@ -50,16 +50,82 @@ def load_rules(rule_dir):
                 rules.append(yaml.safe_load(f))
     return rules
 
-# Function to apply rules on parsed logs
-def apply_rules(logs, rules, log_type):
-    attacked_logs = []
+import datetime
+
+import datetime
+import re
+
+def apply_rules(logs, rules):
+    attacked_logs = []  # List to store logs that match any rule
+    threshold_trackers = {}  # Track relevant logs for threshold-based rules
+
     for log in logs:
+        log_matched = False  # To track if this log matches any rule
+
         for rule in rules:
-            if re.search(rule["condition"], log["message"]):
-                log["Alert"] = rule["alert_message"]
-                log["Stage"] = rule.get("stage", "Unknown")
-                log["Technique"] = rule.get("technique", "Unknown")
-                attacked_logs.append(log)
+            # Initialize threshold tracker if required
+            if rule.get("detection") and rule["id"] not in threshold_trackers:
+                threshold_trackers[rule["id"]] = {"timestamps": [], "log_indices": []}
+
+            detection = rule.get("detection", {})
+            basic_condition = detection.get("condition", "")
+            thresholds = [key for key in detection if key.startswith("selection_")]
+
+            # Process threshold-based rules
+            if thresholds:
+                for threshold in thresholds:
+                    selection = detection[threshold]
+                    event_type_match = selection.get("event_type", "")
+                    record_match = selection.get("record_type", "")
+                    domain_match = selection.get("domain", "")
+                    count = selection.get("condition", {}).get("count", 0)
+                    time_window = selection.get("condition", {}).get("time_window", 0)
+
+                    # Check if the log satisfies basic conditions
+                    if (
+                        (not event_type_match or log.get("event_type") == event_type_match)
+                        and (not record_match or log.get("record_type") == record_match)
+                        and (not domain_match or re.match(domain_match, log.get("domain", "")))
+                    ):
+                        log_matched = True
+                        log_timestamp = datetime.datetime.fromisoformat(log["timestamp"])
+                        tracker = threshold_trackers[rule["id"]]
+
+                        # Add log timestamp and index to the tracker
+                        tracker["timestamps"].append(log_timestamp)
+                        tracker["log_indices"].append(log)
+
+                        # Remove old timestamps outside the rule's time window
+                        time_interval = datetime.timedelta(seconds=time_window)
+                        tracker["timestamps"] = [
+                            t for t in tracker["timestamps"]
+                            if (log_timestamp - t) <= time_interval
+                        ]
+                        tracker["log_indices"] = tracker["log_indices"][-len(tracker["timestamps"]):]
+
+                        # Check if threshold is met
+                        if len(tracker["timestamps"]) >= count:
+                            # Add all contributing logs to attacked_logs with rule details
+                            for contributing_log in tracker["log_indices"]:
+                                contributing_log["Alert"] = rule.get("description", "Threshold Alert")
+                                contributing_log["Stage"] = rule.get("stage", "Unknown")
+                                contributing_log["Technique"] = rule.get("technique", "Unknown")
+                                attacked_logs.append(contributing_log)
+
+                            # Reset tracker after alert
+                            tracker["timestamps"] = []
+                            tracker["log_indices"] = []
+
+            # Process non-threshold rules
+            elif basic_condition:
+                if re.search(basic_condition, log["message"]):
+                    log_matched = True
+                    log["Alert"] = rule.get("description", "Rule Matched")
+                    log["Stage"] = rule.get("stage", "Unknown")
+                    log["Technique"] = rule.get("technique", "Unknown")
+                    attacked_logs.append(log)
+                    break  # Optional: Stop further checks for this log
+
     return attacked_logs
 
 # Function to process logs of a specific type
