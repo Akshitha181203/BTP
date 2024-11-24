@@ -3,6 +3,8 @@ import re
 import json
 import os
 import yaml
+import networkx as nx
+import matplotlib.pyplot as plt
 
 # Define directories for logs and rules
 RAW_LOG_DIR = './raw_logs'
@@ -14,30 +16,23 @@ RULES_DIR = {
 }
 OUTPUT_DIR = './output'
 
+# Define ordered stages and their y-axis positions
+STAGES = [
+    "Reconnaissance", "Initial Access", "Exploitation",
+    "Installation/Persistence", "Command & Control",
+    "Credential Access", "Lateral Movement",
+    "Data Collection", "Exfiltration", "Impact"
+]
+stage_positions = {stage: idx for idx, stage in enumerate(STAGES)}
+
 # Function to parse raw logs into a structured format
 def parse_logs_with_logparser(line, log_type):
-    # Define file extensions based on log type
-    if log_type == "system":
-        file_extension = ".log"
-    elif log_type == "application":
-        file_extension = ".txt"
-    elif log_type == "network":
-        file_extension = ".pcap"
-    else:
-        raise ValueError(f"Unknown log type: {log_type}")
-
-    # Define paths for raw and parsed logs
-    raw_log_file_path = os.path.join(RAW_LOG_DIR, f"{log_type}_raw_logs{file_extension}")
-    parsed_log_file_path = os.path.join(PARSED_LOG_DIR, f"{log_type}_logs.json")
-
-    # Parse the logs using log parser or create one
+    # Placeholder parsing logic
     return None
 
 # Function to parse and save parsed logs
 def parse_logs(log_type):
     parsed_logs = parse_logs_with_logparser(log_type)
-    
-    # Save parsed logs to a file
     if parsed_logs:
         parsed_log_file_path = os.path.join(PARSED_LOG_DIR, f"{log_type}_logs.json")
         with open(parsed_log_file_path, 'w') as f:
@@ -58,38 +53,61 @@ def load_rules(rule_dir):
 # Function to apply rules on parsed logs
 def apply_rules(logs, rules, log_type):
     attacked_logs = []
-
-    # Write rules according to the type of rule
-
-    if re.search(rule["condition"], log["message"]):
-        log["Alert"] = rule["alert_message"]
-        log["Stage"] = rule.get("stage", "Unknown")
-        log["Technique"] = rule.get("technique", "Unknown")
-        attacked_logs.append(log)
+    for log in logs:
+        for rule in rules:
+            if re.search(rule["condition"], log["message"]):
+                log["Alert"] = rule["alert_message"]
+                log["Stage"] = rule.get("stage", "Unknown")
+                log["Technique"] = rule.get("technique", "Unknown")
+                attacked_logs.append(log)
     return attacked_logs
 
 # Function to process logs of a specific type
 def process_logs(log_type):
-    # Parse raw logs
     parse_logs(log_type)
-
-    # Load rules
     rules = load_rules(RULES_DIR[log_type])
-    
-    # Load parsed logs for the log_type
     parsed_log_file_path = os.path.join(PARSED_LOG_DIR, f"{log_type}_logs.json")
     with open(parsed_log_file_path, 'r') as f:
         logs = json.load(f)
     
-    # Apply rules to logs
     attacked_logs = apply_rules(logs, rules, log_type)
     
-    # Save the attacked logs
     output_file_path = os.path.join(OUTPUT_DIR, f"{log_type}_attacked_logs.json")
     with open(output_file_path, 'w') as f:
         json.dump(attacked_logs, f, indent=4)
     
     print(f"{log_type.capitalize()} logs processed. {len(attacked_logs)} alerts generated.")
+    return attacked_logs
+
+# Function to create a graph from attacked logs with stages as in the provided image
+def create_stage_graph(attacked_logs):
+    G = nx.DiGraph()
+    
+    # Add nodes for each attacked log with attributes and position them by stage
+    x_offsets = {stage: 0 for stage in STAGES}  # Track horizontal positioning within each stage
+    for i, log in enumerate(attacked_logs):
+        stage = log.get("Stage", "Unknown")
+        technique = log.get("Technique", "Unknown")
+        
+        # Position nodes in horizontal clusters by stage
+        pos_x = x_offsets[stage]
+        pos_y = -stage_positions.get(stage, len(STAGES))
+        G.add_node(i, label=f"{stage}\n{technique}", pos=(pos_x, pos_y))
+        
+        # Update horizontal offset for next node in the same stage
+        x_offsets[stage] += 1
+    
+    # Plot the graph
+    pos = {i: data["pos"] for i, data in G.nodes(data=True)}
+    node_labels = {i: data["label"] for i, data in G.nodes(data=True)}
+    node_colors = '#ff6666'  # Set a uniform color for all nodes since all logs are attack logs
+    
+    plt.figure(figsize=(10, 8))
+    nx.draw(G, pos, labels=node_labels, node_color=node_colors, with_labels=True, node_size=1000, font_size=8)
+    plt.title("Attack Lifecycle Graph by Stage")
+    plt.xlabel("Logs within each stage")
+    plt.ylabel("Attack Stages")
+    plt.show()
 
 # Main function to initiate threads for each log type
 def main():
@@ -100,16 +118,19 @@ def main():
     
     # Define and start threads for each log type
     threads = []
+    attacked_logs_all = []
     for log_type in RULES_DIR.keys():
-        thread = threading.Thread(target=process_logs, args=(log_type,))
+        thread = threading.Thread(target=lambda: attacked_logs_all.extend(process_logs(log_type)))
         threads.append(thread)
         thread.start()
     
-    # Wait for all threads to complete
     for thread in threads:
         thread.join()
-
+    
     print("Log processing complete.")
+    
+    # Create and display the graph
+    create_stage_graph(attacked_logs_all)
 
 if __name__ == "__main__":
     main()
