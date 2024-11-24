@@ -55,23 +55,30 @@ import datetime
 import datetime
 import re
 
+import datetime
+import re
+
 def apply_rules(logs, rules):
-    attacked_logs = []  # List to store logs that match any rule
-    threshold_trackers = {}  # Track relevant logs for threshold-based rules
+    attacked_logs = []  # Logs that match any rule
+    threshold_trackers = {}  # Track thresholds for rules
 
     for log in logs:
-        log_matched = False  # To track if this log matches any rule
-
+        log_matched = False  # Tracks if the log satisfies any rule
+        
         for rule in rules:
-            # Initialize threshold tracker if required
-            if rule.get("detection") and rule["id"] not in threshold_trackers:
-                threshold_trackers[rule["id"]] = {"timestamps": [], "log_indices": []}
+            # Initialize a tracker for the rule if not already present
+            if rule["id"] not in threshold_trackers:
+                threshold_trackers[rule["id"]] = {
+                    "count": 0,
+                    "size": 0,  # For data size thresholds
+                    "start_time": None,  # Track the time window start
+                    "matching_logs": []  # Store logs contributing to threshold
+                }
 
             detection = rule.get("detection", {})
             basic_condition = detection.get("condition", "")
             thresholds = [key for key in detection if key.startswith("selection_")]
 
-            # Process threshold-based rules
             if thresholds:
                 for threshold in thresholds:
                     selection = detection[threshold]
@@ -79,45 +86,55 @@ def apply_rules(logs, rules):
                     record_match = selection.get("record_type", "")
                     domain_match = selection.get("domain", "")
                     count = selection.get("condition", {}).get("count", 0)
+                    size_threshold = selection.get("condition", {}).get("size", 0)  # For data size
                     time_window = selection.get("condition", {}).get("time_window", 0)
 
-                    # Check if the log satisfies basic conditions
+                    # Check if the log satisfies the basic matching conditions
                     if (
                         (not event_type_match or log.get("event_type") == event_type_match)
                         and (not record_match or log.get("record_type") == record_match)
                         and (not domain_match or re.match(domain_match, log.get("domain", "")))
                     ):
                         log_matched = True
-                        log_timestamp = datetime.datetime.fromisoformat(log["timestamp"])
                         tracker = threshold_trackers[rule["id"]]
+                        log_timestamp = datetime.datetime.fromisoformat(log["timestamp"])
+                        log_size = log.get("size", 0)  # Example: Log's data size
 
-                        # Add log timestamp and index to the tracker
-                        tracker["timestamps"].append(log_timestamp)
-                        tracker["log_indices"].append(log)
+                        # Initialize tracker start_time if not already set
+                        if not tracker["start_time"]:
+                            tracker["start_time"] = log_timestamp
 
-                        # Remove old timestamps outside the rule's time window
-                        time_interval = datetime.timedelta(seconds=time_window)
-                        tracker["timestamps"] = [
-                            t for t in tracker["timestamps"]
-                            if (log_timestamp - t) <= time_interval
-                        ]
-                        tracker["log_indices"] = tracker["log_indices"][-len(tracker["timestamps"]):]
+                        # Check if the log falls within the time window
+                        elapsed_time = (log_timestamp - tracker["start_time"]).total_seconds()
+                        if elapsed_time <= time_window:
+                            tracker["count"] += 1
+                            tracker["size"] += log_size
+                            tracker["matching_logs"].append(log)
 
-                        # Check if threshold is met
-                        if len(tracker["timestamps"]) >= count:
-                            # Add all contributing logs to attacked_logs with rule details
-                            for contributing_log in tracker["log_indices"]:
-                                contributing_log["Alert"] = rule.get("description", "Threshold Alert")
-                                contributing_log["Stage"] = rule.get("stage", "Unknown")
-                                contributing_log["Technique"] = rule.get("technique", "Unknown")
-                                attacked_logs.append(contributing_log)
+                            # Check if the count or size threshold is met
+                            if tracker["count"] >= count or tracker["size"] >= size_threshold:
+                                # Add contributing logs to attacked_logs
+                                for contributing_log in tracker["matching_logs"]:
+                                    contributing_log["Alert"] = rule.get("description", "Threshold Alert")
+                                    contributing_log["Stage"] = rule.get("stage", "Unknown")
+                                    contributing_log["Technique"] = rule.get("technique", "Unknown")
+                                    attacked_logs.append(contributing_log)
 
-                            # Reset tracker after alert
-                            tracker["timestamps"] = []
-                            tracker["log_indices"] = []
+                                # Reset the tracker after an alert is triggered
+                                tracker["count"] = 0
+                                tracker["size"] = 0
+                                tracker["start_time"] = None
+                                tracker["matching_logs"] = []
 
-            # Process non-threshold rules
+                        else:
+                            # Reset the tracker if the time window expires
+                            tracker["count"] = 1
+                            tracker["size"] = log_size
+                            tracker["start_time"] = log_timestamp
+                            tracker["matching_logs"] = [log]
+
             elif basic_condition:
+                # For non-threshold rules, directly check and append
                 if re.search(basic_condition, log["message"]):
                     log_matched = True
                     log["Alert"] = rule.get("description", "Rule Matched")
@@ -127,6 +144,7 @@ def apply_rules(logs, rules):
                     break  # Optional: Stop further checks for this log
 
     return attacked_logs
+
 
 # Function to process logs of a specific type
 def process_logs(log_type):
