@@ -83,24 +83,18 @@ def process_logs(log_type):
 def create_stage_graph(attacked_logs):
     G = nx.DiGraph()
     
-    # Add nodes for each attacked log with attributes and position them by stage
-    x_offsets = {stage: 0 for stage in STAGES}  # Track horizontal positioning within each stage
+    x_offsets = {stage: 0 for stage in STAGES}  
     for i, log in enumerate(attacked_logs):
         stage = log.get("Stage", "Unknown")
         technique = log.get("Technique", "Unknown")
-        
-        # Position nodes in horizontal clusters by stage
         pos_x = x_offsets[stage]
         pos_y = -stage_positions.get(stage, len(STAGES))
         G.add_node(i, label=f"{stage}\n{technique}", pos=(pos_x, pos_y))
-        
-        # Update horizontal offset for next node in the same stage
         x_offsets[stage] += 1
     
-    # Plot the graph
     pos = {i: data["pos"] for i, data in G.nodes(data=True)}
     node_labels = {i: data["label"] for i, data in G.nodes(data=True)}
-    node_colors = '#ff6666'  # Set a uniform color for all nodes since all logs are attack logs
+    node_colors = '#ff6666' 
     
     plt.figure(figsize=(10, 8))
     nx.draw(G, pos, labels=node_labels, node_color=node_colors, with_labels=True, node_size=1000, font_size=8)
