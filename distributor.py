@@ -7,7 +7,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import datetime
 
-# Define directories for logs and rules
+# Defining directories for logs and rules
 RAW_LOG_DIR = './raw_logs'
 PARSED_LOG_DIR = './parsed_logs'
 RULES_DIR = {
@@ -17,7 +17,7 @@ RULES_DIR = {
 }
 OUTPUT_DIR = './output'
 
-# Define ordered stages and their y-axis positions
+# Defining ordered stages and their y-axis positions
 STAGES = [
     "Reconnaissance", "Initial Access", "Exploitation",
     "Installation/Persistence", "Command & Control",
@@ -53,7 +53,7 @@ def load_rules(rule_dir):
 
 def apply_rules(logs, rules):
     attacked_logs = [] 
-    threshold_trackers = {}  # Track thresholds for rules
+    threshold_trackers = {}  # Tracking thresholds for rules
 
     for log in logs:
         log_matched = False  
@@ -80,7 +80,7 @@ def apply_rules(logs, rules):
                     size_threshold = selection.get("condition", {}).get("size", 0)  
                     time_window = selection.get("condition", {}).get("time_window", 0)
 
-                    # Check if the log satisfies the basic matching conditions
+                    # condition if the log satisfies the basic matching
                     if (
                         (not event_type_match or log.get("event_type") == event_type_match)
                         and (not domain_match or re.match(domain_match, log.get("domain", "")))
@@ -155,7 +155,7 @@ def process_logs(log_type):
     print(f"{log_type.capitalize()} logs processed. {len(attacked_logs)} alerts generated.")
     return attacked_logs
 
-# Function to create a graph from attacked logs with stages as in the provided image
+# Function to create graph from attacked logs with stages
 def create_stage_graph(attacked_logs):
     G = nx.DiGraph()
     
@@ -179,14 +179,14 @@ def create_stage_graph(attacked_logs):
     plt.ylabel("Attack Stages")
     plt.show()
 
-# Main function to initiate threads for each log type
+# Main function for initiating threads for each log type
 def main():
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
     if not os.path.exists(PARSED_LOG_DIR):
         os.makedirs(PARSED_LOG_DIR)
     
-    # Define and start threads for each log type
+    # Defining and starting threads for each log type
     threads = []
     attacked_logs_all = []
     for log_type in RULES_DIR.keys():
@@ -199,7 +199,7 @@ def main():
     
     print("Log processing complete.")
     
-    # Create and display the graph
+    # Creating and displaying the graph
     create_stage_graph(attacked_logs_all)
 
 if __name__ == "__main__":
