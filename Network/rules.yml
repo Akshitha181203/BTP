@@ -1,298 +1,291 @@
 rules: 
   - title: Detection of Reconnaissance Activity in NetFlow/Traffic Logs
-  id: 1
-  description: |
-    Detects potential reconnaissance activity by monitoring unusual traffic patterns,
-    such as spikes in connection attempts from a single IP to multiple destinations,
-    high traffic volume from a specific IP, and connection attempts to non-standard ports.
-    These behaviors are typically associated with scanning or probing activities during
-    the reconnaissance stage.
-  stage: Reconnaissance
-  technique: Port Scanning
-  tags:
-    - attack.reconnaissance
-    - network.scanning
-    - traffic.spike
-    - anomaly.detection
-  logsource:
-    category: netflow
-    product: network_traffic
-  detection:
-    selection_high_volume_single_ip:
-      event_type: "NETFLOW ALERT"
-      message: "Unusual spike in traffic from a single IP"
-      src_ip: "*"
-      dst_ip: "Range of IPs (e.g., 203.0.113.0/24)"        
-      # Mentioning range above.
-      condition:
-        connection_attempts: ">500" # Threshold for high connection attempts
-        unusual_traffic_volume: true
-    selection_multiple_ports:
-      event_type: "NETFLOW ALERT"
-      message: "High number of connection attempts to multiple ports"
-      src_ip: "*"
-      dst_ports: "Multiple non-standard ports (e.g., 60000+)"
-      # Mentioning non-standard ports.
-      condition:
-        multiple_ports_targeted: true
-        high_connection_count: true
-    selection_suspicious_bandwidth:
-      event_type: "NETFLOW ALERT"
-      message: "Traffic spike detected with suspicious bandwidth usage"
-      src_ip: "Internal IP (e.g., 203.0.113.100)"
-      dst_ports: ["22", "25", "110", "443"] # Common ports with unusual traffic
-      condition:
-        bandwidth_usage: ">t" # we need to set athreshold for bandwidth usage
-        abnormal_pattern: true
-
-    condition: selection_high_volume_single_ip or selection_multiple_ports or selection_suspicious_bandwidth
-
-  falsepositives:
-    - Legitimate network scanning by authorized security teams
-    - Internal vulnerability assessments or network mapping
-    - High network traffic caused by large data transfers or backups
-
-  level: medium
+    id: 1
+    description: |
+      Detects potential reconnaissance activity by monitoring unusual traffic patterns,
+      such as spikes in connection attempts from a single IP to multiple destinations,
+      high traffic volume from a specific IP, and connection attempts to non-standard ports.
+      These behaviors are typically associated with scanning or probing activities during
+      the reconnaissance stage.
+    stage: Reconnaissance
+    technique: Port Scanning
+    tags:
+      - attack.reconnaissance
+      - network.scanning
+      - traffic.spike
+      - anomaly.detection
+    logsource:
+      category: netflow
+      product: network_traffic
+    detection:
+      selection_high_volume_single_ip:
+        event_type: "NETFLOW ALERT"
+        message: "Unusual spike in traffic from a single IP"
+        src_ip: "*"
+        dst_ip: "Range of IPs (e.g., 203.0.113.0/24)"        
+        # Mentioning range above.
+        condition:
+          connection_attempts: ">500" # Threshold for high connection attempts
+          unusual_traffic_volume: true
+      selection_multiple_ports:
+        event_type: "NETFLOW ALERT"
+        message: "High number of connection attempts to multiple ports"
+        src_ip: "*"
+        dst_ports: "Multiple non-standard ports (e.g., 60000+)"
+        # Mentioning non-standard ports.
+        condition:
+          multiple_ports_targeted: true
+          high_connection_count: true
+      selection_suspicious_bandwidth:
+        event_type: "NETFLOW ALERT"
+        message: "Traffic spike detected with suspicious bandwidth usage"
+        src_ip: "Internal IP (e.g., 203.0.113.100)"
+        dst_ports: ["22", "25", "110", "443"] # Common ports with unusual traffic
+        condition:
+          bandwidth_usage: ">t" # we need to set athreshold for bandwidth usage
+          abnormal_pattern: true
+      condition: selection_high_volume_single_ip or selection_multiple_ports or selection_suspicious_bandwidth
+    falsepositives:
+      - Legitimate network scanning by authorized security teams
+      - Internal vulnerability assessments or network mapping
+      - High network traffic caused by large data transfers or backups
+    level: medium
 
 
   - title: Command and Control Traffic Detection Based on Netflow/Traffic Logs
-  id: 2
-  description: |
-    Detects anomalous traffic patterns indicating potential Command and Control (C2) activity, 
-    such as large volumes of encrypted traffic to external IPs and connections to IPs associated 
-    with known C2 infrastructure. These connections often use obfuscation techniques or non-standard 
-    ports to bypass detection.
-  stage: Command and Control
-  technique: C2 Servers
-  tags:
-    - attack.command_and_control
-    - network.security
-    - c2.communication
-    - anomaly.detection
-  logsource:
-    category: netflow
-  detection:
-    selection_encrypted_traffic_to_external_ips:
-      event_type: "NETFLOW ALERT"
-      message: "Large Amount of Encrypted Traffic to External IP"
-      src_ip: "Internal IP Range (e.g., 192.168.x.x)"
-      dst_ip: "External IP"
-      protocol: "SSL/TLS"
-      condition:
-        data_sent: ">50MB"
-        persistent_connection: true
-        unusual_profile: true # Deviates from typical encrypted traffic
-    selection_obfuscated_or_non_standard_protocol:
-      event_type: "NETFLOW ALERT"
-      message: "Suspicious Connection to Known C2 Infrastructure IP with Unusual Protocol"
-      src_ip: "Internal IP Range (e.g., 192.168.x.x)"
-      dst_ip: "Known C2 IP or Domain"
-      protocol: "Unusual or Non-Standard Ports (e.g., 4444, 1337)"
-      condition:
-      # we need to define a threshold
-        connection_frequency: ">t"  
-        obfuscation_detected: true
-        unusual_protocol: true # Indicates uncommon communication methods
-    condition: selection_encrypted_traffic_to_external_ips or selection_obfuscated_or_non_standard_protocol
-  falsepositives:
-    - Large legitimate file transfers or backup processes during peak hours
-    - Testing or scanning by authorized security teams
-    - Regular legitimate connections over non-standard protocols for business operations
-  level: high
+    id: 2
+    description: |
+      Detects anomalous traffic patterns indicating potential Command and Control (C2) activity, 
+      such as large volumes of encrypted traffic to external IPs and connections to IPs associated 
+      with known C2 infrastructure. These connections often use obfuscation techniques or non-standard 
+      ports to bypass detection.
+    stage: Command and Control
+    technique: C2 Servers
+    tags:
+      - attack.command_and_control
+      - network.security
+      - c2.communication
+      - anomaly.detection
+    logsource:
+      category: netflow
+    detection:
+      selection_encrypted_traffic_to_external_ips:
+        event_type: "NETFLOW ALERT"
+        message: "Large Amount of Encrypted Traffic to External IP"
+        src_ip: "Internal IP Range (e.g., 192.168.x.x)"
+        dst_ip: "External IP"
+        protocol: "SSL/TLS"
+        condition:
+          data_sent: ">50MB"
+          persistent_connection: true
+          unusual_profile: true # Deviates from typical encrypted traffic
+      selection_obfuscated_or_non_standard_protocol:
+        event_type: "NETFLOW ALERT"
+        message: "Suspicious Connection to Known C2 Infrastructure IP with Unusual Protocol"
+        src_ip: "Internal IP Range (e.g., 192.168.x.x)"
+        dst_ip: "Known C2 IP or Domain"
+        protocol: "Unusual or Non-Standard Ports (e.g., 4444, 1337)"
+        condition:
+        # we need to define a threshold
+          connection_frequency: ">t"  
+          obfuscation_detected: true
+          unusual_protocol: true # Indicates uncommon communication methods
+      condition: selection_encrypted_traffic_to_external_ips or selection_obfuscated_or_non_standard_protocol
+    falsepositives:
+      - Large legitimate file transfers or backup processes during peak hours
+      - Testing or scanning by authorized security teams
+      - Regular legitimate connections over non-standard protocols for business operations
+    level: high
 
   - title: Detection of Abnormally Large Outbound Traffic Volumes
-  id: 3
-  description: |
-    Detects potential data exfiltration attempts by monitoring for abnormally large outbound
-    traffic volumes from internal hosts to external IP addresses. Unusually high data transfer
-    could indicate attempts to exfiltrate sensitive data outside the organization.
-  stage: Exfiltration
-  technique: FTP or SFTP or FTPS
-  tags:
-    - data.exfiltration
-    - large.outbound.traffic
-    - anomaly.detection
-  logsource:
-    category: netflow
-    product: network_traffic
-  detection:
-    selection_large_outbound_volume:
-      event_type: "NETFLOW ALERT"
-      message: "Large outbound traffic detected"
-      src_host: "Any internal host (e.g., 'Server01', 'Laptop23')"
-      dst_ip: "External IP (e.g., 203.0.113.45)"
-      condition:
-        outbound_data_volume: ">t" # we need to set a threshold, e.g., 10 GB
-        unusual_host: true
-    condition: selection_large_outbound_volume
-  falsepositives:
-    - Large data backups or synchronization with cloud storage providers
-    - Software updates or patches being downloaded
-    - Data transfers for legitimate business purposes (e.g., analytics, reporting)
-  level: high
-
+    id: 3
+    description: |
+      Detects potential data exfiltration attempts by monitoring for abnormally large outbound
+      traffic volumes from internal hosts to external IP addresses. Unusually high data transfer
+      could indicate attempts to exfiltrate sensitive data outside the organization.
+    stage: Exfiltration
+    technique: FTP or SFTP or FTPS
+    tags:
+      - data.exfiltration
+      - large.outbound.traffic
+      - anomaly.detection
+    logsource:
+      category: netflow
+      product: network_traffic
+    detection:
+      selection_large_outbound_volume:
+        event_type: "NETFLOW ALERT"
+        message: "Large outbound traffic detected"
+        src_host: "Any internal host (e.g., 'Server01', 'Laptop23')"
+        dst_ip: "External IP (e.g., 203.0.113.45)"
+        condition:
+          outbound_data_volume: ">t" # we need to set a threshold, e.g., 10 GB
+          unusual_host: true
+      condition: selection_large_outbound_volume
+    falsepositives:
+      - Large data backups or synchronization with cloud storage providers
+      - Software updates or patches being downloaded
+      - Data transfers for legitimate business purposes (e.g., analytics, reporting)
+    level: high
 
   - title: Detection of Unusually Large Outbound Traffic Volumes on Unencrypted Channels
-  id: 4
-  description: |
-    Detects potential data exfiltration attempts by monitoring for unusually large outbound
-    traffic volumes from internal hosts to external IP addresses over unencrypted channels
-    (e.g., HTTP). Abnormally high data transfer from an internal host may suggest attempts
-    to exfiltrate sensitive data outside the organization.
-  stage: Exfiltration
-  technique: Exfiltration Over Unencrypted Channels
-  tags:
-    - data.exfiltration
-    - large.outbound.traffic
-    - anomaly.detection
-    - unencrypted.traffic
-  logsource:
-    category: netflow
-    product: network_traffic
-  detection:
-    selection_large_outbound_volume:
-      event_type: "NETFLOW ALERT"
-      message: "Unusually large outbound traffic detected"
-      src_host: "Any internal host (e.g., 'WebServer01', 'UserLaptop09')"
-      dst_ip: "Any external IP (e.g., 203.0.113.50)"
-      protocol: "unencrypted" # e.g., HTTP or non-standard protocols that are not encrypted
-      condition:
-        outbound_data_volume: ">t" # e.g., 10 GB as a threshold
-    condition: selection_large_outbound_volume
-  falsepositives:
-    - Legitimate data transfers, such as large backups or data synchronization with cloud providers
-    - Software updates or patches being downloaded from external servers
-    - Large data transfers for business activities like analytics or reporting
-  level: high
+    id: 4
+    description: |
+      Detects potential data exfiltration attempts by monitoring for unusually large outbound
+      traffic volumes from internal hosts to external IP addresses over unencrypted channels
+      (e.g., HTTP). Abnormally high data transfer from an internal host may suggest attempts
+      to exfiltrate sensitive data outside the organization.
+    stage: Exfiltration
+    technique: Exfiltration Over Unencrypted Channels
+    tags:
+      - data.exfiltration
+      - large.outbound.traffic
+      - anomaly.detection
+      - unencrypted.traffic
+    logsource:
+      category: netflow
+      product: network_traffic
+    detection:
+      selection_large_outbound_volume:
+        event_type: "NETFLOW ALERT"
+        message: "Unusually large outbound traffic detected"
+        src_host: "Any internal host (e.g., 'WebServer01', 'UserLaptop09')"
+        dst_ip: "Any external IP (e.g., 203.0.113.50)"
+        protocol: "unencrypted" # e.g., HTTP or non-standard protocols that are not encrypted
+        condition:
+          outbound_data_volume: ">t" # e.g., 10 GB as a threshold
+      condition: selection_large_outbound_volume
+    falsepositives:
+      - Legitimate data transfers, such as large backups or data synchronization with cloud providers
+      - Software updates or patches being downloaded from external servers
+      - Large data transfers for business activities like analytics or reporting
+    level: high
 
   # DNS
   - title: DNS-based Command and Control Detection
-  id: 5
-  description: |
-    Detects patterns in DNS logs that indicate potential C2 communication, such as high volumes of DNS requests 
-    to rare or unknown domains, or excessive DNS TXT record queries, which are often used by malware 
-    for data exfiltration or command retrieval.
-  stage: Command and Control
-  technique: C2 Servers
-  tags:
-    - attack.command_and_control
-    - dns.security
-    - c2.communication
-  logsource:
-    category: dns
-  detection:
-    selection_rare_domains:
-      event_type: "DNS Query"
-      domain: "*"
-      condition:
-        count: 20 # Defining threshold for detecting rare domain queries
-        time_window: 60 # in seconds
-    selection_txt_record_queries:
-      event_type: "DNS Query"
-      record_type: "TXT"
-      condition:
-        count: 15 # Defining threshold for TXT record queries
-        time_window: 60 # in seconds
-    condition: selection_rare_domains or selection_txt_record_queries
-  falsepositives:
-    - Legitimate DNS requests to new domains
-    - Automated systems that query DNS TXT records frequently
-  level: high
+    id: 5
+    description: |
+      Detects patterns in DNS logs that indicate potential C2 communication, such as high volumes of DNS requests 
+      to rare or unknown domains, or excessive DNS TXT record queries, which are often used by malware 
+      for data exfiltration or command retrieval.
+    stage: Command and Control
+    technique: C2 Servers
+    tags:
+      - attack.command_and_control
+      - dns.security
+      - c2.communication
+    logsource:
+      category: dns
+    detection:
+      selection_rare_domains:
+        event_type: "DNS Query"
+        domain: "*"
+        condition:
+          count: 20 # Defining threshold for detecting rare domain queries
+          time_window: 60 # in seconds
+      selection_txt_record_queries:
+        event_type: "DNS Query"
+        record_type: "TXT"
+        condition:
+          count: 15 # Defining threshold for TXT record queries
+          time_window: 60 # in seconds
+      condition: selection_rare_domains or selection_txt_record_queries
+    falsepositives:
+      - Legitimate DNS requests to new domains
+      - Automated systems that query DNS TXT records frequently
+    level: high
 
   # IDS/IPS
-
   - title: Port Scanning Detection
-  id: 6
-  description: |
-    Detects patterns indicative of port scanning, such as multiple connection attempts to a range of ports
-    or specific signatures associated with known port scanning tools like nmap and masscan.
-  stage: Reconnaissance
-  technique: Port Scanning # Network Service Scanning
-  tags:
-    - attack.reconnaissance
-    - network.security
-  logsource:
-    category: ids/ips
-  detection:
-    selection_sequential_ports:
-      event_type: "IDS ALERT"
-      message: "Port scan detected"
-      condition:
-        count: 10  # Define threshold for detection
-        time_window: 60 # in seconds
-    selection_nmap_signature:
-      event_type: "IDS ALERT"
-      message: "nmap scan pattern detected"
-      src_ip: "any"
-      dst_ports:
-        - 22
-        - 80
-        - 443
-    selection_masscan_signature:
-      event_type: "IPS ALERT"
-      message: "masscan tool usage detected"
-      src_ip: "any"
-      dst_ip: "any"
-    condition: selection_sequential_ports or selection_nmap_signature or selection_masscan_signature
-  falsepositives:
-    - Legitimate network monitoring tools
-    - High connection attempts due to legitimate network scans
-  level: medium
+    id: 6
+    description: |
+      Detects patterns indicative of port scanning, such as multiple connection attempts to a range of ports
+      or specific signatures associated with known port scanning tools like nmap and masscan.
+    stage: Reconnaissance
+    technique: Port Scanning # Network Service Scanning
+    tags:
+      - attack.reconnaissance
+      - network.security
+    logsource:
+      category: ids/ips
+    detection:
+      selection_sequential_ports:
+        event_type: "IDS ALERT"
+        message: "Port scan detected"
+        condition:
+          count: 10  # Define threshold for detection
+          time_window: 60 # in seconds
+      selection_nmap_signature:
+        event_type: "IDS ALERT"
+        message: "nmap scan pattern detected"
+        src_ip: "any"
+        dst_ports:
+          - 22
+          - 80
+          - 443
+      selection_masscan_signature:
+        event_type: "IPS ALERT"
+        message: "masscan tool usage detected"
+        src_ip: "any"
+        dst_ip: "any"
+      condition: selection_sequential_ports or selection_nmap_signature or selection_masscan_signature
+    falsepositives:
+      - Legitimate network monitoring tools
+      - High connection attempts due to legitimate network scans
+    level: medium
 
 
   - title: Drive-By Download Attack Detection
-  id: 7
-  description: |
-    Detects patterns indicative of drive-by download attacks, such as access to known malicious URLs 
-    or file downloads commonly associated with drive-by downloads.
-  stage: Exploitation
-  technique: Drive by downloads # Drive-By Compromise
-  tags:
-    - attack.initial_access
-    - malware.download
-  logsource:
-    category: ids
-  detection:
-    selection_driveby_signature:
-      event_type: "IDS ALERT"
-      message: "Signature match for Drive-By Download attack"
-      condition:
-        threshold: 1
-        time_window: 60 # in seconds
-    selection_malicious_url:
-      event_type: "IDS ALERT"
-      message: "Access to malicious site"
-      src_ip: "any"
-      dst_ip: "known_malicious_sites"
-    condition: selection_driveby_signature or selection_malicious_url
-  falsepositives:
-    - Legitimate network activity on flagged sites (e.g., for threat research)
-    - False positive matches with non-malicious URLs
-  level: high
-
+    id: 7
+    description: |
+      Detects patterns indicative of drive-by download attacks, such as access to known malicious URLs 
+      or file downloads commonly associated with drive-by downloads.
+    stage: Exploitation
+    technique: Drive by downloads # Drive-By Compromise
+    tags:
+      - attack.initial_access
+      - malware.download
+    logsource:
+      category: ids
+    detection:
+      selection_driveby_signature:
+        event_type: "IDS ALERT"
+        message: "Signature match for Drive-By Download attack"
+        condition:
+          threshold: 1
+          time_window: 60 # in seconds
+      selection_malicious_url:
+        event_type: "IDS ALERT"
+        message: "Access to malicious site"
+        src_ip: "any"
+        dst_ip: "known_malicious_sites"
+      condition: selection_driveby_signature or selection_malicious_url
+    falsepositives:
+      - Legitimate network activity on flagged sites (e.g., for threat research)
+      - False positive matches with non-malicious URLs
+    level: high
 
   - title: Exploit Kit Download Detection
-  id: 8
-  description: |
-    Detects downloads of files associated with exploit kits, which may indicate a successful compromise attempt.
-    Common exploit kits can deliver files with specific patterns or signatures.
-  stage: Execution
-  technique: Drive by downloads # Exploitation for Client Execution
-  tags:
-    - attack.initial_access
-    - exploit.kit
-  logsource:
-    category: ips
-  detection:
-    selection_exploit_kit:
-      event_type: "IPS ALERT"
-      message: "Exploit kit detected"
-      file_type: ["swf", "js", "exe"]  # Known exploit kit file types
-      src_ip: "any"
-      dst_ip: "any"
-    condition: selection_exploit_kit
-  falsepositives:
-    - Legitimate downloads of flagged file types from trusted sources
-    - High-volume download activity for testing or research
-  level: high
-
+    id: 8
+    description: |
+      Detects downloads of files associated with exploit kits, which may indicate a successful compromise attempt.
+      Common exploit kits can deliver files with specific patterns or signatures.
+    stage: Execution
+    technique: Drive by downloads # Exploitation for Client Execution
+    tags:
+      - attack.initial_access
+      - exploit.kit
+    logsource:
+      category: ips
+    detection:
+      selection_exploit_kit:
+        event_type: "IPS ALERT"
+        message: "Exploit kit detected"
+        file_type: ["swf", "js", "exe"]  # Known exploit kit file types
+        src_ip: "any"
+        dst_ip: "any"
+      condition: selection_exploit_kit
+    falsepositives:
+      - Legitimate downloads of flagged file types from trusted sources
+      - High-volume download activity for testing or research
+    level: high

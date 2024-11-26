@@ -54,7 +54,7 @@ def parse_logs(log_type):
         input_dir = RAW_LOG_DIR
         output_dir = PARSED_LOG_DIR
         log_file = f"{log_type}_logs.log"
-        log_format = '<Date> <Time> <Pid> <Level> <Component>: <Content>'  # Customize as needed
+        log_format = '<Date> <Time> <Level> <Component>: <Content>'  
         regex = [
             r'blk_(|-)[0-9]+',  # Block ID
             r'(/|)([0-9]+\.){3}[0-9]+(:[0-9]+|)(:|)',  # IP
@@ -82,6 +82,7 @@ def load_rules(rule_dir):
         if file.endswith(".yml"):
             with open(os.path.join(rule_dir, file), 'r') as f:
                 rules.append(yaml.safe_load(f))
+    # print(rules)
     return rules
 
 def apply_rules(logs, rules):
@@ -92,14 +93,16 @@ def apply_rules(logs, rules):
         log_matched = False  # Tracks if the log satisfies any rule
 
         for rule in rules:
+            # print(rule.description)
+            print("rusles entered")
             # Initialize a tracker for the rule if not already present
-            if rule["id"] not in threshold_trackers:
-                threshold_trackers[rule["id"]] = {
-                    "count": 0,
-                    "size": 0,  # For data size thresholds
-                    "start_time": None,  # Track the time window start
-                    "matching_logs": []  # Store logs contributing to threshold
-                }
+            # if rule["id"] not in threshold_trackers:
+            #     threshold_trackers[rule["id"]] = {
+            #         "count": 0,
+            #         "size": 0,  # For data size thresholds
+            #         "start_time": None,  # Track the time window start
+            #         "matching_logs": []  # Store logs contributing to threshold
+            #     }
 
             detection = rule.get("detection", {})
             basic_condition = detection.get("condition", "")
@@ -210,7 +213,7 @@ def apply_rules(logs, rules):
                                 tracker["count"] = 1
                                 tracker["start_time"] = log_timestamp
                                 tracker["matching_logs"] = [log]
-
+    print("ended")
     return attacked_logs
 
 
@@ -219,13 +222,15 @@ def apply_rules(logs, rules):
 def process_logs(log_type, attacked_logs_all):
     parse_logs(log_type)
     rules = load_rules(RULES_DIR[log_type])
-    parsed_log_file_path = os.path.join(PARSED_LOG_DIR, f"{log_type}_logs.json")
+    parsed_log_file_path = os.path.join(PARSED_LOG_DIR, f"{log_type}_parsed.json")
     
     if os.path.exists(parsed_log_file_path):
         with open(parsed_log_file_path, 'r') as f:
+            print("parsed file call")
             logs = json.load(f)
         
         attacked_logs = apply_rules(logs, rules)
+        print("attacked logs")
         
         output_file_path = os.path.join(OUTPUT_DIR, f"{log_type}_attacked_logs.json")
         with open(output_file_path, 'w') as f:

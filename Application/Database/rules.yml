@@ -1,0 +1,81 @@
+rules:
+  - title: Detection of Suspicious Database Activities
+    id: 1
+    description: |
+      Identifies suspicious database activities such as attempts to dump extensive datasets or access restricted tables without proper permissions.
+    stage: Data Collection
+    technique: Database Extraction
+    tags:
+      - database.security
+      - data.exfiltration
+      - unauthorized.access
+    logsource:
+      category: database_logs
+    detection:
+      large_dataset_dump:
+        message: "Large dataset dump attempt detected"
+        condition:
+          description: "Monitor for SQL queries attempting to dump large datasets."
+          queries:
+            - "SELECT * FROM users"
+            - "SELECT * FROM sensitive_table"
+      unauthorized_table_access:
+        message: "Unauthorized access attempt to restricted table"
+        condition:
+          description: "Detects access attempts to restricted tables or datasets without proper permissions."
+          restricted_tables:
+            - "financial_records"
+            - "payroll_data"
+            - "sensitive_data"
+    falsepositives:
+      - Legitimate database administrators performing large data queries for reporting.
+      - Authorized users accessing restricted tables for approved tasks.
+    level: high
+
+  - title: Detection of Suspicious Login Activities and Input Anomalies
+    id: 2
+    description: |
+      Identifies suspicious application activities such as multiple consecutive failed login attempts, spikes in login attempts within short timeframes, and unusual payloads in form submissions.
+    stage: Recconaissance
+    technique: Vulnerebility Scanner
+    tags:
+      - application.security
+      - login.anomalies
+      - sql.injection
+    logsource:
+      category: application_logs
+    detection:
+      multiple_failed_logins:
+        message: "Multiple consecutive failed login attempts detected"
+        condition:
+          description: |
+            Detects 5 or more failed login attempts (e.g., Authentication failed, Login attempt failed) from the same IP address within 60 seconds.
+          patterns:
+            - "Authentication failed"
+            - "Login attempt failed"
+          threshold:
+            count: 5
+            timeframe: 60
+      spike_in_login_attempts:
+        message: "Spike in failed login attempts detected"
+        condition:
+          description: |
+            Monitors for Invalid credentials messages appearing more than 20 times from the same IP address within 60 seconds.
+          patterns:
+            - "Invalid credentials"
+          threshold:
+            count: 20
+            timeframe: 60
+      unusual_payload:
+        message: "Unusual payload detected in form submission"
+        condition:
+          description: |
+            Detects unexpected payloads in form submissions, such as excessively long strings or suspicious characters indicating potential SQL injection attempts.
+          patterns:
+            - "SQL Injection attempt"
+            - "Suspicious input detected"
+    falsepositives:
+      - Legitimate users mistyping credentials multiple times during login.
+      - Internal or automated system tests generating repeated login failures.
+      - Developers testing input validation mechanisms with unusual payloads.
+    level: medium
