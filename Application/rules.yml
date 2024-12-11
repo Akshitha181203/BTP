@@ -1,0 +1,259 @@
+rules:
+  - title: Detection of Web Server Backdoor and Hidden Directory Access
+    id: 1
+    description: |
+      Detects suspicious POST requests with encoded commands or data, and repeated or abnormal access to hidden directories or custom backdoor files.
+    stage: Installation / Persistance
+    technique: Backdoors
+    tags:
+      - web.server.logs
+      - malicious.activity
+      - backdoor
+      - hidden.directories
+    logsource:
+      category: application_logs
+      type: web_server
+    detection:
+      suspicious_post_requests:
+        message: "Suspicious POST request detected with encoded commands or data"
+        condition:
+          description: "Monitor for POST requests containing suspicious encoded data or commands in the payload."
+          post_requests:
+            http_method: "POST"
+            encoded_patterns:
+              - "cmd="
+              - "base64"
+              - "%2Fbin%2Fbash"
+              - "eval("
+      hidden_directory_access:
+        message: "Repeated or abnormal access to hidden directories or backdoor files detected"
+        condition:
+          description: "Monitor for repeated or abnormal GET requests to hidden directories or known backdoor files."
+          access_patterns:
+            http_method: "GET"
+            paths:
+              - "/.hidden"
+              - "/.backdoor"
+              - "/uploads/.php"
+            frequency_threshold: 10
+            time_window: 60
+    falsepositives:
+      - Automated security scanners generating POST requests with encoded commands.
+      - Developers testing access to hidden directories or backdoor files for debugging purposes.
+    level: high
+
+  - title: Detection of SQL Injection Attempts in Web Server Logs
+    id: 2
+    description: |
+      Detects SQL queries in web server requests that may indicate attempts to extract data from a database, such as SELECT statements or UNION queries.
+    stage: Data Collection
+    technique: Database Extraction
+    tags:
+      - web.server.logs
+      - sql.injection
+      - database.extraction
+    logsource:
+      category: application_logs
+      type: web_server
+    detection:
+      sql_injection_attempts:
+        message: "SQL Injection attempt detected in web server request"
+        condition:
+          description: "Monitor for suspicious SQL query patterns in HTTP requests, such as SELECT or UNION statements."
+          patterns:
+            query_strings:
+              - "SELECT"
+              - "UNION ALL SELECT"
+              - "' OR '1'='1"
+              - "OR 1=1"
+              - "DROP TABLE"
+            special_characters:
+              - "'"
+              - ";"
+              - "--"
+              - "/*"
+              - "*/"
+            frequency_threshold: 5  # Trigger an alert if 5 or more such requests are observed within 60 seconds
+            time_window: 60
+    falsepositives:
+      - Legitimate complex SQL queries passed through web applications.
+      - Automated scanners performing vulnerability assessments on web applications.
+    level: high
+
+  - title: Detection of Suspicious Web Server Activity
+    id: 3
+    description: |
+      Identifies unusual spikes in traffic, suspicious user-agent strings, and high rates of error responses (404/403) that may indicate probing or malicious activity targeting web server endpoints.
+    stage: Reconnaissance
+    technique: Endpoint Enumeration, Directory Brute-Forcing
+    tags:
+      - web.server.logs
+      - probing.activity
+      - error.monitoring
+    logsource:
+      category: application_logs
+      type: web_server
+    detection:
+      unusual_traffic_spike:
+        message: "Unusual spike in traffic to specific endpoints detected"
+        condition:
+          description: "Monitor traffic to sensitive or vulnerable endpoints like /admin or /wp-login.php."
+          endpoints:
+            - "/admin"
+            - "/wp-login.php"
+            - "/login"
+          frequency_threshold: 50  # Trigger if 50+ requests are made to these endpoints within 1 minute
+          time_window: 60
+
+      suspicious_user_agents:
+        message: "Suspicious user-agent detected in web server logs"
+        condition:
+          description: "Identify requests with unusual user-agent strings often used by bots or automated tools."
+          user_agents:
+            - "sqlmap"  # Common SQL injection tool
+            - "nmap"
+            - "curl"
+            - "python-requests"
+            - "bot"
+            - "crawler"
+            - "scan"
+          frequency_threshold: 10  # Trigger if 10+ requests with suspicious user-agent strings are detected within 1 minute
+          time_window: 60
+
+      high_error_rate:
+        message: "High rate of 404 or 403 errors detected"
+        condition:
+          description: "Monitor for excessive 404 or 403 error responses, which could indicate probing or directory brute-forcing attempts."
+          status_codes:
+            - "404"
+            - "403"
+          frequency_threshold: 20  # Trigger if 20+ such errors are logged within 1 minute
+          time_window: 60
+    falsepositives:
+      - Legitimate traffic surges to endpoints during application updates or testing.
+      - Automated vulnerability scanners used by security teams.
+      - Error responses caused by misconfigured URLs or testing scripts.
+    level: high
+
+  - title: Detection of Suspicious or Phishing Emails
+    id: 4
+    description: |
+      Detects suspicious email activity, such as incoming emails with unusual attachments (e.g., .exe, .js, .docm) or links to known malicious domains, as well as attempts at phishing through domain spoofing or fake email addresses.
+    stage: Initial Access
+    technique: Spear Phishing
+    tags:
+      - initial.access
+      - phishing
+      - email.security
+      - anomaly.detection
+    logsource:
+      category: email_logs
+    detection:
+      suspicious_attachments:
+        message: "Suspicious attachment detected in incoming email"
+        condition:
+          description: "Monitor for incoming emails with attachments of unusual or potentially dangerous file types (e.g., .exe, .js, .docm)."
+          attachments:
+            - ".exe"
+            - ".js"
+            - ".docm"
+      suspicious_urls:
+        message: "Suspicious URL detected in email"
+        condition:
+          description: "Monitor for incoming emails containing URLs linked to suspicious or known malicious domains."
+          urls:
+            - "http://malicious-url.com" #mentioning malicious url link
+      phishing_attempt:
+        message: "Phishing attempt detected due to domain spoofing"
+        condition:
+          description: "Monitor for emails from addresses with slight modifications to trusted domains (e.g., google.com vs g00gle.com)."
+          spoofed_domains:
+            - "trustedname.co" # we need to mention  a spoofed domain
+            - "trustedname.com"
+    falsepositives:
+      - Legitimate marketing or mass email campaigns that might include attachments or external links.
+      - Internal emails with legitimate attachments that might be flagged as suspicious by automated rules.
+      - Spoofed emails that are part of a legitimate business process.
+    level: high
+
+- title: Detection of Suspicious Database Activities
+    id: 5
+    description: |
+      Identifies suspicious database activities such as attempts to dump extensive datasets or access restricted tables without proper permissions.
+    stage: Data Collection
+    technique: Database Extraction
+    tags:
+      - database.security
+      - data.exfiltration
+      - unauthorized.access
+    logsource:
+      category: database_logs
+    detection:
+      large_dataset_dump:
+        message: "Large dataset dump attempt detected"
+        condition:
+          description: "Monitor for SQL queries attempting to dump large datasets."
+          queries:
+            - "SELECT * FROM users"
+            - "SELECT * FROM sensitive_table"
+      unauthorized_table_access:
+        message: "Unauthorized access attempt to restricted table"
+        condition:
+          description: "Detects access attempts to restricted tables or datasets without proper permissions."
+          restricted_tables:
+            - "financial_records"
+            - "payroll_data"
+            - "sensitive_data"
+    falsepositives:
+      - Legitimate database administrators performing large data queries for reporting.
+      - Authorized users accessing restricted tables for approved tasks.
+    level: high
+
+  - title: Detection of Suspicious Login Activities and Input Anomalies
+    id: 6
+    description: |
+      Identifies suspicious application activities such as multiple consecutive failed login attempts, spikes in login attempts within short timeframes, and unusual payloads in form submissions.
+    stage: Recconaissance
+    technique: Vulnerebility Scanner
+    tags:
+      - application.security
+      - login.anomalies
+      - sql.injection
+    logsource:
+      category: application_logs
+    detection:
+      multiple_failed_logins:
+        message: "Multiple consecutive failed login attempts detected"
+        condition:
+          description: |
+            Detects 5 or more failed login attempts (e.g., Authentication failed, Login attempt failed) from the same IP address within 60 seconds.
+          patterns:
+            - "Authentication failed"
+            - "Login attempt failed"
+          threshold:
+            count: 5
+            timeframe: 60
+      spike_in_login_attempts:
+        message: "Spike in failed login attempts detected"
+        condition:
+          description: |
+            Monitors for Invalid credentials messages appearing more than 20 times from the same IP address within 60 seconds.
+          patterns:
+            - "Invalid credentials"
+          threshold:
+            count: 20
+            timeframe: 60
+      unusual_payload:
+        message: "Unusual payload detected in form submission"
+        condition:
+          description: |
+            Detects unexpected payloads in form submissions, such as excessively long strings or suspicious characters indicating potential SQL injection attempts.
+          patterns:
+            - "SQL Injection attempt"
+            - "Suspicious input detected"
+    falsepositives:
+      - Legitimate users mistyping credentials multiple times during login.
+      - Internal or automated system tests generating repeated login failures.
+      - Developers testing input validation mechanisms with unusual payloads.
+    level: medium
+

@@ -18,7 +18,7 @@ rules:
       category: netflow
       product: network_traffic
     detection:
-      selection_high_volume_single_ip:
+      selection_ip_high_volume_single_ip:
         event_type: "NETFLOW ALERT"
         message: "Unusual spike in traffic from a single IP"
         src_ip: "*"
@@ -163,7 +163,7 @@ rules:
 
   # DNS
   - title: DNS-based Command and Control Detection
-    id: 5
+    id: n005
     description: |
       Detects patterns in DNS logs that indicate potential C2 communication, such as high volumes of DNS requests 
       to rare or unknown domains, or excessive DNS TXT record queries, which are often used by malware 

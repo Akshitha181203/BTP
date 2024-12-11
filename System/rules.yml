@@ -1,6 +1,43 @@
 rules:
+  - title: Keylogger Detection and Suspicious Device Access
+    id: s001
+    description: |
+      This rule detects alerts from anti-virus and endpoint detection and response (EDR) systems 
+      flagging known keylogger signatures and monitoring unusual access to keyboard input devices. 
+      It helps identify unauthorized credential access attempts through keylogging.
+    stage: Credential Access
+    technique: Keylogging
+    tags:
+      - attack.credential-access
+      - attack.keylogging
+      - endpoint.security
+    logsource:
+      category:
+        - anti-virus
+        - endpoint-detection-response
+    detection:
+      selection_keylogger_malware_detection:
+        event_type: "ANTI-VIRUS ALERT"
+        message: "Keylogger Malware Detected"
+        content: "Detected and quarantined keylogger malware"
+        condition:
+          alert_type: "malware"
+          time_window: 10
+      selection_suspicious_device_access:
+        event_type: "EDR ALERT"
+        message: "Suspicious access to keyboard input devices"
+        content: "Unusual access to keyboard input devices"
+        condition:
+          suspicious_activity: true
+          time_window: 10
+      condition: selection_keylogger_malware_detection or selection_suspicious_device_access
+    falsepositives:
+      - Authorized IT applications with monitoring components for accessibility or debugging
+      - Legitimate software that may access keyboard devices under normal operation
+    level: high
+
   - title: Malicious File Download and Suspicious Script Execution Detection
-    id: s1
+    id: s002
     description: |
       This rule detects endpoint security events where users download files flagged as malware, execute abnormal scripts, 
       or open potentially dangerous file types that are not commonly used. Such actions often result from phishing or malware attacks.
@@ -12,7 +49,6 @@ rules:
       - endpoint.security
     logsource:
       category: endpoint-security
-      product: any
     detection:
       selection_malicious_file_download:
         event_type: "ENDPOINT ALERT"
@@ -54,7 +90,7 @@ rules:
     level: medium
 
   - title: Suspicious Keylogger Process and Log File Creation Detection
-    id: s2
+    id: s003
     description: |
       Detects processes potentially performing keylogging activities by monitoring keyboard inputs 
       and creating files that store captured keystrokes. This rule helps identify unauthorized 
@@ -67,7 +103,6 @@ rules:
       - endpoint.security
     logsource:
       category: endpoint-security
-      product: any
     detection:
       selection_keylogger_process:
         event_type: "ENDPOINT ALERT"
@@ -87,7 +122,7 @@ rules:
           - "C:\\Temp\\keys_log.txt"
           - "/tmp/keys_log.txt"
         associated_process:
-          - "malicious.exe"
+          - "*.exe"
         condition:
           unusual_file_creation: true
           time_window: 10
@@ -97,47 +132,9 @@ rules:
       - Legitimate administrative monitoring software
     level: high
 
-  - title: Keylogger Detection and Suspicious Device Access
-    id: s3
-    description: |
-      This rule detects alerts from anti-virus and endpoint detection and response (EDR) systems 
-      flagging known keylogger signatures and monitoring unusual access to keyboard input devices. 
-      It helps identify unauthorized credential access attempts through keylogging.
-    stage: Credential Access
-    technique: Keylogging
-    tags:
-      - attack.credential-access
-      - attack.keylogging
-      - endpoint.security
-    logsource:
-      category:
-        - anti-virus
-        - endpoint-detection-response
-      product: any
-    detection:
-      selection_keylogger_malware_detection:
-        event_type: "ANTI-VIRUS ALERT"
-        message: "Keylogger Malware Detected"
-        content: "Detected and quarantined keylogger malware"
-        condition:
-          alert_type: "malware"
-          time_window: 10
-      selection_suspicious_device_access:
-        event_type: "EDR ALERT"
-        message: "Suspicious access to keyboard input devices"
-        content: "Unusual access to keyboard input devices"
-        condition:
-          suspicious_activity: true
-          time_window: 10
-      condition: selection_keylogger_malware_detection or selection_suspicious_device_access
-    falsepositives:
-      - Authorized IT applications with monitoring components for accessibility or debugging
-      - Legitimate software that may access keyboard devices under normal operation
-    level: high
-
 
   - title: Ransomware Detection and Unauthorized Encryption Attempt Monitoring
-    id: s4
+    id: s004
     description: |
       This rule reviews anti-virus and Endpoint Detection and Response (EDR) logs for alerts related to recognized ransomware signatures, including but not limited to known variants, and any failed encryption attempts by untrusted applications. Prompt detection of these threats enables rapid response and containment.
     stage: Initial Access
@@ -147,9 +144,9 @@ rules:
       - attack.encryption
       - endpoint.security
     logsource:
-      category: antivirus
-      category: endpoint-detection-response
-      product: any
+      category: 
+        - antivirus
+        - endpoint-detection-response
     detection:
       selection_ransomware_signature:
         event_type: "ANTIVIRUS ALERT"
@@ -198,8 +195,7 @@ rules:
 #     event_type: "ANTIVIRUS ALERT"
 #     message: "Ransomware Signature Detected via TIF"
 #     signature_name: 
-#       # Assuming `tif` is a variable that pulls from a dynamic threat feed
-#       - "${tif.ransomware_signatures}"  # Placeholder for dynamic TIF values
+#       - "${tif.ransomware_signatures}"  # dynamic TIF values
 #     condition:
 #       alert_type: "ransomware"
 #       time_window: 10 # in seconds
@@ -207,7 +203,7 @@ rules:
 #     event_type: "ENDPOINT ALERT"
 #     message: "Unauthorized Encryption Attempt Blocked"
 #     application_name: 
-#       - "${tif.untrusted_applications}"  # Placeholder for dynamic TIF values
+#       - "${tif.untrusted_applications}"  # dynamic TIF values
 #     condition:
 #       unauthorized_encryption: true
 #       time_window: 10 # in seconds
@@ -219,7 +215,7 @@ rules:
 # level: high
 
   - title: Unauthorized Memory Access and Credential Dumping Detection
-    id: s5
+    id: s005
     description: |
       Detects unauthorized attempts to access sensitive processes such as lsass.exe, which is often targeted for credential dumping.
       The rule also identifies unusual memory dump activity from multiple known tools that are used to extract credentials from memory.
@@ -231,13 +227,11 @@ rules:
       - endpoint.security
     logsource:
       category: endpoint-detection-response
-      product: any
     detection:
       selection_memory_access:
         event_type: "EDR ALERT"
         message: "Unauthorized Memory Access Attempt on lsass.exe"
-        process_name: "*.*"  # Matches any process name
-        # process_name: "unknown_tool.exe"  # Placeholder for any tool that accesses lsass.exe
+        process_name: "*.*"     # any process that access lsass.exe
         condition:
           target_process: "lsass.exe"  # Monitoring for unauthorized access attempts
           access_type: "memory"  # Indicates that memory access is being attempted
@@ -265,7 +259,7 @@ rules:
     level: high
 
   - title: Unauthorized Screen Capturing Activity Detection
-    id: s6
+    id: s006
     description: |
       Detects unauthorized screen capturing activities by monitoring endpoint security logs for alerts triggered by applications accessing display buffers or screen capture functionalities. This may indicate potential data collection attempts by malicious software.
     stage: Data Collection
@@ -276,7 +270,6 @@ rules:
       - endpoint.security
     logsource:
       category: endpoint
-      product: any
     detection:
       selection_screen_capture_access:
         event_type: "ENDPOINT SECURITY ALERT"
@@ -358,7 +351,7 @@ rules:
 #   - "/path/to/sensitive/file2.csv"
 
   - title: Large-Scale File Deletion and Overwrite Detection
-    id: s7
+    id: s007
     description: |
       Monitors for large-scale file deletions and overwrites, which may indicate data destruction activities. 
       The rule triggers alerts based on defined thresholds for file operations in a specified time window.
@@ -370,7 +363,6 @@ rules:
       - system.security
     logsource:
       category: file_access
-      product: any
     detection:
       selection_mass_deletion:
         event_type: "FILE ACCESS ALERT"
@@ -378,7 +370,7 @@ rules:
         threshold: 
           type: both
           track: by_dir
-          count: 1000  # Threshold for deletions
+          count: 1000  # Threshold for deletions in small environment 10000 and so in large environments
           seconds: 60  # Time window for the detection
       selection_significant_overwrite:
         event_type: "FILE ACCESS ALERT"
@@ -393,11 +385,11 @@ rules:
       - Routine system maintenance
       - Scheduled backup processes
       - User-initiated file cleanups
-    level: high
+    level: medium
 
   # File Integrity
   - title: File Integrity Monitoring for Unauthorized Changes
-    id: s8
+    id: s008
     description: |
       Detects unauthorized changes to files or directories, particularly in web upload directories 
       and critical directories, which may indicate the placement of backdoors or other malicious files.
@@ -453,7 +445,7 @@ rules:
     level: high
 
   - title: File Integrity Monitoring for Webshell Indicators
-    id: s9
+    id: s009
     description: |
       Detects unexpected changes to critical files, particularly in web directories, 
       unauthorized file creations in sensitive directories, and deletion of log files, 
@@ -506,7 +498,7 @@ rules:
     level: high
 
   - title: File Integrity Monitoring for Ransomware Indicators
-    id: s10
+    id: s010
     description: |
       Monitors for significant changes in file integrity, such as unexpected mass encryption of files 
       and modifications in file extensions, indicating potential ransomware activity.
@@ -553,7 +545,7 @@ rules:
 
   # Powershell
   - title: Suspicious PowerShell Activity Related to Credential Dumping
-    id: s11
+    id: s011
     description: |
       Detects suspicious PowerShell activity, such as encoded script execution, attempts to access lsass.exe memory, 
       and misuse of Get-Credential cmdlet, which are often indicators of credential dumping or credential harvesting.
@@ -605,7 +597,7 @@ rules:
 
   # Security
   - title: Unauthorized Privilege Escalation Detection via Buffer Overflow
-    id: s12
+    id: s012
     description: |
       Detect unauthorized attempts to escalate privileges potentially using buffer overflow vulnerabilities.
       Monitor for suspicious kernel module loads and abnormal privilege escalation attempts following system crashes.
@@ -658,7 +650,7 @@ rules:
 
 
   - title: Unauthorized Privilege Escalation and Suspicious Kernel Module Activity
-    id: s13
+    id: s013
     description: |
       Detects unauthorized attempts to gain root or administrative privileges, suspicious loading of kernel modules, 
       and abnormal use of privileged commands, which may indicate an exploit or privilege escalation attempt.
@@ -715,7 +707,7 @@ rules:
 
   # Windows Event
   - title: Detection of Unusual Kerberos Authentication Patterns
-    id: s14
+    id: s014
     description: |
       Detects potential suspicious activities by monitoring Windows Event Logs for unusual Kerberos authentication patterns,
       including TGT requests from unexpected systems or users, and abnormal TGS requests targeting multiple systems.
@@ -751,7 +743,7 @@ rules:
     level: high
 
   - title: Detection of Unusual Interactions with Credential Processes
-    id: s15
+    id: s015
     description: |
       Detects potential credential dumping or unauthorized access attempts by monitoring Windows Event Logs
       for unusual interactions with lsass.exe or other processes handling sensitive credentials, such as attempts 
@@ -791,7 +783,7 @@ rules:
     level: high
 
   - title: Detection of Unusual Logon Attempts
-    id: s16
+    id: s016
     description: |
       Detects potential unauthorized access by monitoring Windows Event Logs for successful logon attempts 
       (Event ID 4624) made through RDP or SMB from non-standard IP addresses or unusual user accounts.
@@ -829,7 +821,7 @@ rules:
 
   # Authentication
   - title: Detection of Multiple Logins from Same User Across Different Systems
-    id: s17
+    id: s017
     description: |
       Detects potential lateral movement or credential theft by monitoring authentication logs for multiple logins from the same user account across different systems or within a short time window. Unusual login patterns may suggest that an attacker is using stolen credentials to move across the network.
     stage: Lateral Movement

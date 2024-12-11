@@ -86,12 +86,11 @@ def load_rules(rule_dir):
     return rules
 
 def apply_rules(logs, rules):
-    attacked_logs = []  # Logs that match any rule
-    threshold_trackers = {}  # Track thresholds for rules
+    attacked_logs = []  
+    threshold_trackers = {}  
 
     for log in logs:
-        log_matched = False  # Tracks if the log satisfies any rule
-
+        log_matched = False  
         for rule in rules:
             # print(rule.description)
             print("rusles entered")
@@ -108,13 +107,11 @@ def apply_rules(logs, rules):
             basic_condition = detection.get("condition", "")
             thresholds = [key for key in detection if key.startswith("selection_")]
 
-            # Track log matching based on conditions
             log_matched_for_rule = False
 
-            # Check direct conditions first (e.g., IP, file name, event ID)
             if 'selection_ip' in detection:
                 ip_conditions = detection['selection_ip']
-                if log.get("source_ip") == ip_conditions.get("source_ip", "") or log.get("destination_ip") == ip_conditions.get("destination_ip", ""):
+                if log.get("src_ip") == ip_conditions.get("src_ip", "") or log.get("dst_ip") == ip_conditions.get("dst_ip", ""):
                     log["Alert"] = rule.get("description", "Condition Met Alert")
                     log["Stage"] = rule.get("stage", "Unknown")
                     log["Technique"] = rule.get("technique", "Unknown")
@@ -130,86 +127,73 @@ def apply_rules(logs, rules):
                     attacked_logs.append(log)
                     log_matched_for_rule = True
 
-            # If no direct match found, check for threshold-based conditions
             if not log_matched_for_rule:
                 for threshold in thresholds:
                     selection = detection[threshold]
                     event_type_match = selection.get("event_type", "")
                     domain_match = selection.get("domain", "")
-                    source_ip_match = selection.get("source_ip", "")
-                    destination_ip_match = selection.get("destination_ip", "")
+                    source_ip_match = selection.get("src_ip", "")
+                    destination_ip_match = selection.get("dst_ip", "")
                     file_name_match = selection.get("file_name", "")
                     event_id_match = selection.get("event_id", "")
                     count = selection.get("condition", {}).get("count", 0)
-                    size_threshold = selection.get("condition", {}).get("size", 0)  # For data size
+                    size_threshold = selection.get("condition", {}).get("size", 0)  
                     time_window = selection.get("condition", {}).get("time_window", 0)
 
-                    # Check if the log satisfies the basic matching conditions
                     if (
                         (not event_type_match or log.get("event_type") == event_type_match)
                         and (not domain_match or re.match(domain_match, log.get("domain", "")))
-                        and (not source_ip_match or log.get("source_ip") == source_ip_match)
-                        and (not destination_ip_match or log.get("destination_ip") == destination_ip_match)
+                        and (not source_ip_match or log.get("src_ip") == source_ip_match)
+                        and (not destination_ip_match or log.get("dst_ip") == destination_ip_match)
                         and (not file_name_match or re.match(file_name_match, log.get("file_name", "")))
                         and (not event_id_match or log.get("event_id") == event_id_match)
                     ):
-                        # If this log matches, add it to attacked_logs
                         log["Alert"] = rule.get("description", "Condition Met Alert")
                         log["Stage"] = rule.get("stage", "Unknown")
                         log["Technique"] = rule.get("technique", "Unknown")
                         attacked_logs.append(log)
                         log_matched_for_rule = True
 
-                    # If threshold is present, track count and size
                     if log_matched_for_rule:
                         tracker = threshold_trackers[rule["id"]]
                         log_timestamp = datetime.datetime.fromisoformat(log["timestamp"])
-                        log_size = log.get("data_size", log.get("packet_size", 0))  # Handle both data_size and packet_size
+                        log_size = log.get("data_size", log.get("packet_size", 0))  
 
-                        # Handle size threshold (no time limit)
                         if size_threshold > 0:
                             tracker["size"] += log_size
                             tracker["matching_logs"].append(log)
 
                             if tracker["size"] >= size_threshold:
-                                # Add contributing logs to attacked_logs
                                 for contributing_log in tracker["matching_logs"]:
                                     contributing_log["Alert"] = rule.get("description", "Data Size Threshold Alert")
                                     contributing_log["Stage"] = rule.get("stage", "Unknown")
                                     contributing_log["Technique"] = rule.get("technique", "Unknown")
                                     attacked_logs.append(contributing_log)
 
-                                # Reset tracker after alert
                                 tracker["size"] = 0
                                 tracker["matching_logs"] = []
 
-                        # Handle count threshold (with time window)
                         if count > 0 and time_window > 0:
-                            # Initialize tracker start_time if not already set
                             if not tracker["start_time"]:
                                 tracker["start_time"] = log_timestamp
 
-                            # Check if the log falls within the time window
                             elapsed_time = (log_timestamp - tracker["start_time"]).total_seconds()
                             if elapsed_time <= time_window:
                                 tracker["count"] += 1
                                 tracker["matching_logs"].append(log)
 
                                 if tracker["count"] >= count:
-                                    # Add contributing logs to attacked_logs
                                     for contributing_log in tracker["matching_logs"]:
                                         contributing_log["Alert"] = rule.get("description", "Count Threshold Alert")
                                         contributing_log["Stage"] = rule.get("stage", "Unknown")
                                         contributing_log["Technique"] = rule.get("technique", "Unknown")
                                         attacked_logs.append(contributing_log)
 
-                                    # Reset tracker after alert
                                     tracker["count"] = 0
                                     tracker["start_time"] = None
                                     tracker["matching_logs"] = []
 
                             else:
-                                # Reset tracker if the time window expires
                                 tracker["count"] = 1
                                 tracker["start_time"] = log_timestamp
                                 tracker["matching_logs"] = [log]
